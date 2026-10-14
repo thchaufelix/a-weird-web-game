@@ -1,0 +1,1374 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>無菌室 · 第4關：傷口與離別</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    width: 100%; height: 100%;
+    background: #0a0a0c;
+    color: #e8e4dc;
+    font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", "Heiti TC", sans-serif;
+    overflow: hidden;
+    user-select: none;
+  }
+  #wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100%;
+    padding: 12px;
+    gap: 8px;
+  }
+  #titlebar {
+    width: min(1280px, 100%);
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 0 4px;
+    font-size: 13px;
+    letter-spacing: 0.08em;
+    color: #9a958c;
+  }
+  #titlebar strong { color: #d4cfc4; font-weight: 600; }
+  #stage {
+    position: relative;
+    width: min(1280px, 100%);
+    height: min(720px, calc(100vh - 120px));
+    max-height: 720px;
+    background: #111;
+    border: 1px solid #2a2a30;
+    box-shadow: 0 0 40px rgba(0,0,0,0.6);
+    overflow: hidden;
+  }
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    image-rendering: pixelated;
+  }
+  #hud { position: absolute; inset: 0; pointer-events: none; }
+  #objective {
+    position: absolute;
+    top: 16px; left: 16px;
+    max-width: 400px;
+    padding: 10px 14px;
+    background: rgba(8,8,12,0.78);
+    border-left: 3px solid #c4a574;
+    font-size: 14px;
+    line-height: 1.45;
+    color: #e0d8cc;
+  }
+  #objective .label {
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    color: #c4a574;
+    margin-bottom: 4px;
+  }
+  #flags-hud {
+    position: absolute;
+    top: 16px; right: 16px;
+    padding: 8px 12px;
+    background: rgba(8,8,12,0.72);
+    border: 1px solid #2a2a30;
+    font-size: 11px;
+    line-height: 1.6;
+    color: #7a756c;
+    letter-spacing: 0.04em;
+  }
+  #flags-hud .ok { color: #c4a574; }
+  #flags-hud .warn { color: #c47874; }
+  #wound-hud {
+    position: absolute;
+    bottom: 140px; left: 16px;
+    padding: 6px 12px;
+    background: rgba(40,20,16,0.85);
+    border: 1px solid #8a5040;
+    font-size: 12px;
+    color: #c47874;
+    letter-spacing: 0.08em;
+    display: none;
+  }
+  #prompt {
+    position: absolute;
+    padding: 6px 12px;
+    background: rgba(12,12,16,0.9);
+    border: 1px solid #c4a574;
+    color: #f0e8d8;
+    font-size: 13px;
+    white-space: nowrap;
+    transform: translate(-50%, -100%);
+    display: none;
+    pointer-events: none;
+  }
+  #prompt kbd {
+    display: inline-block;
+    padding: 1px 6px;
+    margin-right: 4px;
+    border: 1px solid #c4a574;
+    border-radius: 3px;
+    font-size: 11px;
+    font-family: inherit;
+    color: #c4a574;
+  }
+  #dialogue {
+    position: absolute;
+    left: 24px; right: 24px; bottom: 20px;
+    min-height: 110px;
+    padding: 18px 22px 16px;
+    background: rgba(6,6,10,0.92);
+    border: 1px solid #3a3832;
+    border-top: 2px solid #c4a574;
+    display: none;
+    pointer-events: auto;
+  }
+  #dialogue .speaker {
+    font-size: 13px;
+    color: #c4a574;
+    letter-spacing: 0.1em;
+    margin-bottom: 8px;
+  }
+  #dialogue .text {
+    font-size: 16px;
+    line-height: 1.55;
+    color: #efe9df;
+    min-height: 48px;
+  }
+  #dialogue .hint {
+    margin-top: 10px;
+    font-size: 12px;
+    color: #7a756c;
+    text-align: right;
+  }
+  #endcard {
+    position: absolute;
+    inset: 0;
+    background: rgba(4,4,8,0.94);
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    pointer-events: auto;
+    text-align: center;
+    padding: 40px;
+  }
+  #endcard h1 {
+    font-size: 28px;
+    font-weight: 500;
+    letter-spacing: 0.15em;
+    color: #e8e0d4;
+  }
+  #endcard p {
+    font-size: 15px;
+    color: #9a958c;
+    line-height: 1.7;
+    max-width: 440px;
+  }
+  #endcard .seal {
+    margin-top: 12px;
+    font-size: 12px;
+    letter-spacing: 0.2em;
+    color: #c4a574;
+  }
+  #endcard a.continue {
+    margin-top: 8px;
+    padding: 12px 36px;
+    border: 1px solid #c4a574;
+    color: #c4a574;
+    text-decoration: none;
+    font-size: 14px;
+    letter-spacing: 0.15em;
+    background: transparent;
+  }
+  #endcard a.continue:hover {
+    background: rgba(196,165,116,0.12);
+  }
+  #controls-hint {
+    width: min(1280px, 100%);
+    font-size: 12px;
+    color: #5a564e;
+    text-align: center;
+    letter-spacing: 0.04em;
+  }
+  #title-screen {
+    position: absolute;
+    inset: 0;
+    background: #0c0c10;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    z-index: 20;
+    pointer-events: auto;
+  }
+  #title-screen h1 {
+    font-size: 36px;
+    font-weight: 400;
+    letter-spacing: 0.35em;
+    color: #e8e0d4;
+  }
+  #title-screen .sub {
+    font-size: 14px;
+    color: #8a857a;
+    letter-spacing: 0.2em;
+  }
+  #title-screen button {
+    margin-top: 24px;
+    padding: 12px 36px;
+    background: transparent;
+    border: 1px solid #c4a574;
+    color: #c4a574;
+    font-size: 15px;
+    font-family: inherit;
+    letter-spacing: 0.2em;
+    cursor: pointer;
+  }
+  #title-screen button:hover {
+    background: rgba(196,165,116,0.12);
+  }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="titlebar">
+    <span><strong>無菌室</strong> · 第4關：傷口與離別</span>
+    <span id="scene-label">—</span>
+  </div>
+  <div id="stage">
+    <canvas id="cv" width="1280" height="720"></canvas>
+    <div id="hud">
+      <div id="objective"><div class="label">目標</div><div id="obj-text">—</div></div>
+      <div id="flags-hud"></div>
+      <div id="wound-hud">側腰 · 石灰傷</div>
+      <div id="prompt"><kbd>E</kbd><span id="prompt-text">互動</span></div>
+    </div>
+    <div id="dialogue">
+      <div class="speaker" id="dlg-speaker"></div>
+      <div class="text" id="dlg-text"></div>
+      <div class="hint">按 E / Space / Enter 繼續</div>
+    </div>
+    <div id="endcard">
+      <h1>駕駛室側門外。</h1>
+      <p>第4關結束。<br/>周朗斷後拉下防爆鐵門。<br/>下一章：第5關｜游絲與歸位</p>
+      <div class="seal">— 無菌室 · 第一卷 · 傷口與離別 —</div>
+      <a class="continue" href="level3.html">回第3關</a>
+    </div>
+    <div id="title-screen">
+      <h1>無菌室</h1>
+      <div class="sub">第4關：傷口與離別</div>
+      <div class="sub" style="margin-top:8px;letter-spacing:0.08em;font-size:12px;color:#5a564e">走廊 · 下層通道口 · 上行舷梯</div>
+      <button id="start-btn">開始</button>
+    </div>
+  </div>
+  <div id="controls-hint">移動 WASD / 方向鍵　互動 E / Space　對話繼續 E / Space / Enter　（無戰鬥／無血量）</div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  const W = 1280, H = 720;
+  const TILE = 40;
+  const PLAYER_SIZE = 28;
+  const SPEED = 170;
+  const XUMAN_SPEED = 100;
+  const AJIE_SPEED = 130;
+  const ALIEN_SPEED = 78;
+  const ALIEN_WAKE_DELAY = 0.8;
+
+  const canvas = document.getElementById("cv");
+  const ctx = canvas.getContext("2d");
+  const objText = document.getElementById("obj-text");
+  const sceneLabel = document.getElementById("scene-label");
+  const flagsHud = document.getElementById("flags-hud");
+  const woundHud = document.getElementById("wound-hud");
+  const promptEl = document.getElementById("prompt");
+  const promptText = document.getElementById("prompt-text");
+  const dialogueEl = document.getElementById("dialogue");
+  const dlgSpeaker = document.getElementById("dlg-speaker");
+  const dlgText = document.getElementById("dlg-text");
+  const endcard = document.getElementById("endcard");
+  const titleScreen = document.getElementById("title-screen");
+  const startBtn = document.getElementById("start-btn");
+
+  const flags = {
+    ambushStarted: false,
+    gotWound: false,
+    zhouSealed: false,
+    escorting: false,
+    xumanAtStairs: false,
+    reachedBridge: false,
+    cleared: false,
+  };
+
+  let player = { x: 420, y: 420, vx: 0, vy: 0 };
+  let keys = {};
+  let interactables = [];
+  let solids = [];
+  let nearby = null;
+  let dialogueQueue = [];
+  let inDialogue = false;
+  let gameStarted = false;
+  let lastTs = 0;
+  let animT = 0;
+  let pendingDialogueEnd = null;
+  let fogPulse = 0;
+  let knockCooldown = 0;
+  let chaseActive = false;
+  let alienWakeTimer = 0;
+  let sealSequence = false; // Zhou sealing in progress after wound
+  let sealDoneQueued = false;
+  let deniedLower = false;
+
+  let xuman = { x: 360, y: 400, following: false };
+  let ajie = { x: 480, y: 460, fleeing: false };
+  let zhou = { x: 280, y: 560, sealing: false, visible: true };
+  let aliens = [];
+  let pipeFx = 0; // steel pipe swing flash
+
+  // Blast door that seals lower passage (irreversible)
+  const BLAST = { x: 48, y: 500, w: 280, h: 28 };
+  // Stairs zone (up toward bridge)
+  const STAIRS = { x: 900, y: 80, w: 240, h: 200 };
+  // Bridge side door (exit)
+  const BRIDGE = { x: 1040, y: 60, w: 120, h: 50 };
+  // Lower passage zone (forbidden after seal)
+  const LOWER = { x: 80, y: 560, w: 220, h: 110 };
+
+  const theme = {
+    floor: "#181614",
+    wall: "#2c2622",
+    accent: "#3a322c",
+  };
+
+  function setObjective(t) { objText.textContent = t; }
+  function setSceneLabel(t) { sceneLabel.textContent = t; }
+
+  function inStairs(x, y) {
+    return x >= STAIRS.x && x <= STAIRS.x + STAIRS.w && y >= STAIRS.y && y <= STAIRS.y + STAIRS.h;
+  }
+  function inLower(x, y) {
+    return x >= LOWER.x && x <= LOWER.x + LOWER.w && y >= LOWER.y && y <= LOWER.y + LOWER.h;
+  }
+  function nearBridge(x, y) {
+    return dist(x, y, BRIDGE.x + BRIDGE.w / 2, BRIDGE.y + BRIDGE.h / 2) < 70;
+  }
+
+  function refreshFlagsHud() {
+    function mark(ok, label, warn) {
+      var cls = ok ? "ok" : (warn ? "warn" : "");
+      return '<span class="' + cls + '">' + (ok ? "✓" : "·") + " " + label + "</span>";
+    }
+    flagsHud.innerHTML = [
+      mark(flags.gotWound, "側腰石灰傷", !flags.gotWound && chaseActive),
+      mark(flags.zhouSealed, "周朗斷後封門"),
+      mark(flags.escorting, "帶許曼上行"),
+      mark(flags.reachedBridge, "駕駛室側門"),
+    ].join("<br/>");
+    woundHud.style.display = flags.gotWound ? "block" : "none";
+  }
+
+  function showDialogue(lines) {
+    dialogueQueue = lines.slice();
+    inDialogue = true;
+    advanceDialogue();
+  }
+
+  function advanceDialogue() {
+    if (dialogueQueue.length === 0) {
+      dialogueEl.style.display = "none";
+      inDialogue = false;
+      onDialogueEnd();
+      return;
+    }
+    const line = dialogueQueue.shift();
+    dlgSpeaker.textContent = line.speaker || "";
+    dlgText.textContent = line.text;
+    dialogueEl.style.display = "block";
+  }
+
+  function onDialogueEnd() {
+    if (pendingDialogueEnd) {
+      const fn = pendingDialogueEnd;
+      pendingDialogueEnd = null;
+      fn();
+    }
+    updateObjective();
+    refreshFlagsHud();
+  }
+
+  function updateObjective() {
+    if (flags.cleared) { setObjective("—"); return; }
+    if (!flags.ambushStarted) {
+      setObjective("走廊裡還有餘震。確認同伴，準備往上行舷梯。");
+    } else if (!flags.gotWound) {
+      setObjective("異化者從下層通道湧上來——護住許曼，別硬碰。");
+    } else if (!flags.zhouSealed) {
+      setObjective("側腰受了石灰傷。周朗正斷後——聽他說。");
+    } else if (!flags.escorting) {
+      setObjective("鐵門已封。帶許曼往上行舷梯——別下去找周朗。");
+    } else if (!flags.reachedBridge) {
+      setObjective("帶許曼上往駕駛室的舷梯，到達側門外。");
+    } else {
+      setObjective("駕駛室側門外。");
+    }
+  }
+
+  function rectsOverlap(a, b) {
+    return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+  }
+
+  function entityBlocked(px, py, size) {
+    size = size || PLAYER_SIZE;
+    const pr = { x: px - size / 2, y: py - size / 2, w: size, h: size };
+    for (const s of solids) {
+      if (s.cleared) continue;
+      if (rectsOverlap(pr, s)) return true;
+    }
+    if (px < 30 || px > W - 30 || py < 30 || py > H - 30) return true;
+    return false;
+  }
+
+  function blocked(px, py) {
+    return entityBlocked(px, py, PLAYER_SIZE);
+  }
+
+  function dist(ax, ay, bx, by) {
+    const dx = ax - bx, dy = ay - by;
+    return Math.sqrt(dx * dx + dy * dy);
+  }
+
+  function spawnAliens() {
+    aliens = [
+      { x: 160, y: 620, r: 16, color: "#5a4038", label: "異化者" },
+      { x: 240, y: 640, r: 15, color: "#4a3830", label: "異化者" },
+      { x: 120, y: 580, r: 14, color: "#503830", label: "異化者" },
+    ];
+    chaseActive = true;
+    flags.ambushStarted = true;
+    alienWakeTimer = ALIEN_WAKE_DELAY;
+    refreshFlagsHud();
+    updateObjective();
+  }
+
+  function applyBlastDoor() {
+    // Irreversible solid across lower corridor
+    solids = solids.filter(function (s) { return s.id !== "blastDoor"; });
+    solids.push({
+      id: "blastDoor",
+      x: BLAST.x, y: BLAST.y, w: BLAST.w, h: BLAST.h,
+      label: "blast", color: "#3a3430",
+    });
+    // Also seal sides of lower pocket so player can't walk around
+    solids.push({
+      id: "blastDoor",
+      x: 48, y: 528, w: 36, h: 144,
+      label: "blast", color: "#2a2420",
+    });
+    solids.push({
+      id: "blastDoor",
+      x: 292, y: 528, w: 36, h: 144,
+      label: "blast", color: "#2a2420",
+    });
+  }
+
+  function performZhouSeal() {
+    if (flags.zhouSealed) return;
+    flags.zhouSealed = true;
+    sealSequence = false;
+    zhou.sealing = false;
+    zhou.x = BLAST.x + BLAST.w / 2;
+    zhou.y = BLAST.y + 50; // south of door — sealed behind
+    applyBlastDoor();
+    pipeFx = 1.2;
+    // Aliens that got past door stay; ones below are trapped visually
+    aliens = aliens.filter(function (a) {
+      return a.y < BLAST.y; // keep only those already north of door
+    });
+    // If none north, leave one wounded loiterer north for tension then fade chase pressure
+    if (aliens.length === 0) {
+      aliens = [{ x: 200, y: 440, r: 14, color: "#4a3830", label: "異化者", trapped: true }];
+    }
+    // Zhou behind door — mark not interactable as living companion on this side
+    zhou.visible = true; // still drawn faintly behind
+    rebuildInteractPrompts();
+    refreshFlagsHud();
+    updateObjective();
+  }
+
+  function rebuildInteractPrompts() {
+    for (const it of interactables) {
+      if (it.id === "xuman") {
+        if (flags.reachedBridge) it.prompt = "許曼（側門外）";
+        else if (flags.escorting) it.prompt = "許曼（跟隨中）";
+        else if (flags.zhouSealed) it.prompt = "帶許曼上行";
+        else it.prompt = "與許曼交談";
+      }
+      if (it.id === "ajie") {
+        it.prompt = flags.zhouSealed ? "阿傑（跟上）" : "與阿傑交談";
+      }
+      if (it.id === "zhou") {
+        it.prompt = flags.zhouSealed ? "防爆鐵門（已封）" : "與周朗交談";
+      }
+      if (it.id === "blast") {
+        it.prompt = flags.zhouSealed ? "防爆鐵門（不可逆）" : "防爆鐵門";
+      }
+      if (it.id === "stairs") {
+        it.prompt = "上行舷梯";
+      }
+      if (it.id === "bridge") {
+        it.prompt = flags.reachedBridge ? "駕駛室側門（已到）" : "駕駛室側門";
+      }
+      if (it.id === "lower") {
+        it.prompt = flags.zhouSealed ? "下層（已封）" : "下層通道口";
+      }
+    }
+  }
+
+  function buildCorridor() {
+    sceneId = "corridor";
+    setSceneLabel("走廊 · 下層通道口 · 上行舷梯");
+    solids = [];
+    interactables = [];
+
+    player = { x: 420, y: 400, vx: 0, vy: 0 };
+    xuman = { x: 360, y: 380, following: false };
+    ajie = { x: 500, y: 440, fleeing: false };
+    zhou = { x: 220, y: 540, sealing: false, visible: true };
+    aliens = [];
+    chaseActive = false;
+    alienWakeTimer = 0;
+    sealSequence = false;
+    sealDoneQueued = false;
+
+    // Outer walls
+    solids.push({ x: 0, y: 0, w: W, h: 48, label: "wall" });
+    solids.push({ x: 0, y: H - 48, w: W, h: 48, label: "wall" });
+    solids.push({ x: 0, y: 0, w: 48, h: H, label: "wall" });
+    solids.push({ x: W - 48, y: 0, w: 48, h: H, label: "wall" });
+
+    // Corridor partitions — leave path from lower→mid→stairs
+    // Left wall chunk above lower
+    solids.push({ x: 48, y: 48, w: 200, h: 200, label: "partition", color: "#2a2622" });
+    // Mid furniture
+    solids.push({ x: 560, y: 280, w: 100, h: 60, label: "crate", color: "#3a3430" });
+    solids.push({ x: 700, y: 480, w: 140, h: 50, label: "bench", color: "#3a322c" });
+    // Right side walls leaving stair corridor
+    solids.push({ x: 880, y: 320, w: 28, h: 352, label: "partition", color: "#2a2622" });
+    solids.push({ x: 908, y: 320, w: 200, h: 80, label: "partition", color: "#2a2622" });
+    // Stair railing blocks
+    solids.push({ x: 1100, y: 200, w: 80, h: 40, label: "rail", color: "#4a4038" });
+
+    // Blast door frame (open until sealed) — no solid yet
+    // Interactables
+    interactables.push({
+      id: "lower",
+      x: LOWER.x + LOWER.w / 2, y: LOWER.y + 40, r: 70,
+      label: "下層通道",
+      prompt: "下層通道口",
+      action: interactLower,
+    });
+    interactables.push({
+      id: "blast",
+      x: BLAST.x + BLAST.w / 2, y: BLAST.y + BLAST.h / 2, r: 75,
+      label: "防爆鐵門",
+      prompt: "防爆鐵門",
+      action: interactBlast,
+    });
+    interactables.push({
+      id: "zhou",
+      x: zhou.x, y: zhou.y, r: 55,
+      label: "周朗",
+      prompt: "與周朗交談",
+      action: interactZhou,
+      isNpc: true,
+      color: "#6a7a90",
+    });
+    interactables.push({
+      id: "xuman",
+      x: xuman.x, y: xuman.y, r: 55,
+      label: "許曼",
+      prompt: "與許曼交談",
+      action: interactXuman,
+      isNpc: true,
+      color: "#8a6a80",
+    });
+    interactables.push({
+      id: "ajie",
+      x: ajie.x, y: ajie.y, r: 55,
+      label: "阿傑",
+      prompt: "與阿傑交談",
+      action: interactAjie,
+      isNpc: true,
+      color: "#6a8a70",
+    });
+    interactables.push({
+      id: "stairs",
+      x: STAIRS.x + STAIRS.w / 2, y: STAIRS.y + STAIRS.h / 2, r: 100,
+      label: "上行舷梯",
+      prompt: "上行舷梯",
+      action: interactStairs,
+    });
+    interactables.push({
+      id: "bridge",
+      x: BRIDGE.x + BRIDGE.w / 2, y: BRIDGE.y + BRIDGE.h / 2 + 20, r: 70,
+      label: "駕駛室側門",
+      prompt: "駕駛室側門",
+      action: interactBridge,
+      isExit: true,
+    });
+
+    rebuildInteractPrompts();
+    updateObjective();
+    refreshFlagsHud();
+  }
+
+  var sceneId = "corridor";
+
+  // ——— Interactions ———
+  function interactLower() {
+    if (flags.zhouSealed) {
+      showDialogue([
+        { speaker: "系統", text: "防爆鐵門已落。另一側傳來鋼管撞擊與刮擦——下不去了。" },
+        { speaker: "梁子安", text: "周朗……" },
+        { speaker: "許曼", text: "他說上去把連桿解開。別回頭。" },
+      ]);
+      return;
+    }
+    if (!flags.ambushStarted) {
+      showDialogue([
+        { speaker: "系統", text: "下層通道口熱氣混着鏽味。有東西在鐵梯上拖行。" },
+        { speaker: "周朗", text: "別湊太近。我守口子——你們留意上行舷梯。" },
+      ]);
+      pendingDialogueEnd = function () {
+        if (!chaseActive) spawnAliens();
+      };
+      return;
+    }
+    showDialogue([
+      { speaker: "系統", text: "異化者正從通道口拱上來。不是戰鬥能解決的。" },
+    ]);
+  }
+
+  function interactBlast() {
+    if (flags.zhouSealed) {
+      showDialogue([
+        { speaker: "系統", text: "防爆鐵門不可逆地鎖死。門縫滲出褐色霧氣。" },
+        { speaker: "周朗", text: "（門後，悶聲）門撐不了多久——上去！把連桿解開！" },
+      ]);
+      return;
+    }
+    showDialogue([
+      { speaker: "系統", text: "防爆鐵門的拉杆還掛着。周朗的手已經放上去了。" },
+      { speaker: "周朗", text: "必要時我拉。你護住許曼。" },
+    ]);
+  }
+
+  function interactZhou() {
+    if (flags.zhouSealed) {
+      interactBlast();
+      return;
+    }
+    if (!flags.ambushStarted) {
+      showDialogue([
+        { speaker: "周朗", text: "駕駛室連桿卡死了。得上去解開——否則這船還會歪。" },
+        { speaker: "周朗", text: "我斷後。鐵門在我這邊。" },
+        { speaker: "梁子安", text: "別說得像訣別。" },
+        { speaker: "周朗", text: "（擰牙螺絲）只是排序。先活。" },
+      ]);
+      pendingDialogueEnd = function () {
+        if (!chaseActive) spawnAliens();
+      };
+      return;
+    }
+    if (!flags.gotWound) {
+      showDialogue([
+        { speaker: "周朗", text: "護住許曼！我用鋼管擋——你別硬碰！" },
+      ]);
+      return;
+    }
+    // Wound taken — start seal sequence via dialogue
+    if (!flags.zhouSealed && !sealSequence) {
+      sealSequence = true;
+      showDialogue([
+        { speaker: "周朗", text: "你受傷了——側腰那口是石灰。別管我。" },
+        { speaker: "周朗", text: "門撐不了多久。你們上去，把連桿解開。" },
+        { speaker: "梁子安", text: "周朗——！" },
+        { speaker: "周朗", text: "走。" },
+      ]);
+      pendingDialogueEnd = function () {
+        performZhouSeal();
+        showDialogue([
+          { speaker: "系統", text: "周朗揮鋼管斷後，拉下防爆鐵門。鎖舌咬死——不可逆。" },
+          { speaker: "周朗", text: "（門後）上去！" },
+          { speaker: "許曼", text: "子安……我們走。別下去找他。" },
+        ]);
+        pendingDialogueEnd = function () {
+          flags.escorting = true;
+          xuman.following = true;
+          ajie.fleeing = true;
+          rebuildInteractPrompts();
+          refreshFlagsHud();
+          updateObjective();
+        };
+      };
+      return;
+    }
+    showDialogue([{ speaker: "周朗", text: "走！" }]);
+  }
+
+  function interactXuman() {
+    if (!flags.ambushStarted) {
+      showDialogue([
+        { speaker: "許曼", text: "袖口……還扣得住。上行舷梯在那邊。" },
+        { speaker: "梁子安", text: "跟着我。慢沒關係。" },
+      ]);
+      return;
+    }
+    if (!flags.zhouSealed) {
+      showDialogue([
+        { speaker: "許曼", text: "它們從下面上來了——周朗還在門口。" },
+      ]);
+      return;
+    }
+    if (!flags.escorting) {
+      flags.escorting = true;
+      xuman.following = true;
+      showDialogue([
+        { speaker: "梁子安", text: "跟我上舷梯。別回頭。" },
+        { speaker: "許曼", text: "……嗯。" },
+      ]);
+      rebuildInteractPrompts();
+      return;
+    }
+    if (flags.reachedBridge) {
+      showDialogue([{ speaker: "許曼", text: "側門在這。我……留在門框也可以。" }]);
+      return;
+    }
+    showDialogue([{ speaker: "許曼", text: "我跟着。腳底還是黏。" }]);
+  }
+
+  function interactAjie() {
+    if (!flags.ambushStarted) {
+      showDialogue([
+        { speaker: "阿傑", text: "相紙還在你袋裡。我……我不想再拍了。" },
+      ]);
+      return;
+    }
+    if (!flags.zhouSealed) {
+      showDialogue([
+        { speaker: "阿傑", text: "周朗——！子安你流血了——" },
+      ]);
+      return;
+    }
+    showDialogue([
+      { speaker: "阿傑", text: "鐵門關了。我們……真的要丟下他？" },
+      { speaker: "梁子安", text: "他說上去解連桿。先做到。" },
+    ]);
+    ajie.fleeing = true;
+  }
+
+  function interactStairs() {
+    if (!flags.zhouSealed) {
+      showDialogue([
+        { speaker: "梁子安", text: "舷梯通往駕駛室。先顧通道口那邊的人。" },
+      ]);
+      return;
+    }
+    if (!flags.escorting) {
+      flags.escorting = true;
+      xuman.following = true;
+    }
+    showDialogue([
+      { speaker: "系統", text: "上行舷梯金屬踏板發涼。上方是駕駛室側廊。" },
+      { speaker: "梁子安", text: "許曼，抓住扶手。" },
+    ]);
+  }
+
+  function interactBridge() {
+    if (!flags.zhouSealed) {
+      showDialogue([{ speaker: "系統", text: "駕駛室側門就在前方——但走廊還未清出退路。" }]);
+      return;
+    }
+    if (!flags.gotWound) {
+      // Shouldn't happen — wound before seal — but guard
+      showDialogue([{ speaker: "梁子安", text: "側腰還在燒。先站穩。" }]);
+      return;
+    }
+    // Need Xuman nearby
+    if (dist(xuman.x, xuman.y, player.x, player.y) > 100 && !inStairs(xuman.x, xuman.y)) {
+      showDialogue([{ speaker: "梁子安", text: "許曼還在後面。等她跟上。" }]);
+      if (!flags.escorting) {
+        flags.escorting = true;
+        xuman.following = true;
+      }
+      return;
+    }
+    if (!nearBridge(player.x, player.y) && !inStairs(player.x, player.y)) {
+      showDialogue([{ speaker: "梁子安", text: "再往上——側門就在舷梯頂。" }]);
+      return;
+    }
+    flags.reachedBridge = true;
+    flags.xumanAtStairs = true;
+    refreshFlagsHud();
+    updateObjective();
+    showDialogue([
+      { speaker: "系統", text: "你抵達駕駛室側門外。許曼靠着門框，呼吸淺而穩。" },
+      { speaker: "許曼", text: "進去吧。我看門口。" },
+      { speaker: "梁子安", text: "（按着側腰）連桿……我去。" },
+      { speaker: "系統", text: "通關：側腰石灰傷 · 周朗斷後封門 · 帶許曼至駕駛室側門。" },
+    ]);
+    pendingDialogueEnd = function () {
+      flags.cleared = true;
+      chaseActive = false;
+      endcard.style.display = "flex";
+      refreshFlagsHud();
+      updateObjective();
+    };
+  }
+
+  // ——— Wound trigger ———
+  function triggerWound() {
+    if (flags.gotWound) return;
+    flags.gotWound = true;
+    knockCooldown = 1.5;
+    refreshFlagsHud();
+    updateObjective();
+    showDialogue([
+      { speaker: "系統", text: "異化者的肢節擦過你側腰——不是血先到，是一陣石灰般的灼白。" },
+      { speaker: "梁子安", text: "（悶哼）……沒事。" },
+      { speaker: "周朗", text: "有事。你護許曼——我斷後！" },
+    ]);
+    pendingDialogueEnd = function () {
+      // Auto-prompt Zhou seal if player doesn't interact soon — soft auto after short beat via sealSequence on next Zhou logic
+      // Nudge: make Zhou start moving to door
+      zhou.sealing = true;
+      rebuildInteractPrompts();
+    };
+  }
+
+  function autoSealIfReady() {
+    if (flags.zhouSealed || sealDoneQueued || !flags.gotWound) return;
+    if (inDialogue || sealSequence) return;
+    // Auto seal shortly after wound if Zhou is near blast / sealing
+    sealSequence = true;
+    sealDoneQueued = true;
+    showDialogue([
+      { speaker: "周朗", text: "門撐不了多久——你們上去把連桿解開！" },
+      { speaker: "周朗", text: "（鋼管橫掃）走！" },
+      { speaker: "梁子安", text: "周朗——！" },
+    ]);
+    pendingDialogueEnd = function () {
+      performZhouSeal();
+      showDialogue([
+        { speaker: "系統", text: "周朗拉下防爆鐵門。鎖舌咬死——不可逆。下不去找他了。" },
+        { speaker: "許曼", text: "子安，上行。他要我們解連桿。" },
+      ]);
+      pendingDialogueEnd = function () {
+        flags.escorting = true;
+        xuman.following = true;
+        ajie.fleeing = true;
+        rebuildInteractPrompts();
+        refreshFlagsHud();
+        updateObjective();
+      };
+    };
+  }
+
+  // ——— Fade ———
+  let fading = false;
+  let fadeAlpha = 0;
+  let fadeDir = 0;
+  let fadeCallback = null;
+
+  function fadeToScene(builder) {
+    if (fading) return;
+    fading = true;
+    fadeDir = 1;
+    fadeCallback = builder;
+  }
+
+  function updateFade(dt) {
+    if (!fading) return;
+    fadeAlpha += fadeDir * dt * 2.5;
+    if (fadeDir > 0 && fadeAlpha >= 1) {
+      fadeAlpha = 1;
+      if (fadeCallback) { fadeCallback(); fadeCallback = null; }
+      fadeDir = -1;
+    } else if (fadeDir < 0 && fadeAlpha <= 0) {
+      fadeAlpha = 0;
+      fading = false;
+      fadeDir = 0;
+    }
+  }
+
+  // ——— Input ———
+  window.addEventListener("keydown", function (e) {
+    const k = e.key.toLowerCase();
+    keys[k] = true;
+    if (["arrowup","arrowdown","arrowleft","arrowright"," "].indexOf(e.key.toLowerCase()) >= 0 ||
+        e.key === " ") {
+      e.preventDefault();
+    }
+    if (!gameStarted) return;
+    if (e.key === " " || k === "e" || k === "enter") {
+      if (inDialogue) {
+        e.preventDefault();
+        advanceDialogue();
+      } else if (!fading && endcard.style.display !== "flex") {
+        e.preventDefault();
+        tryInteract();
+      }
+    }
+  });
+  window.addEventListener("keyup", function (e) {
+    keys[e.key.toLowerCase()] = false;
+  });
+
+  startBtn.addEventListener("click", function () {
+    titleScreen.style.display = "none";
+    gameStarted = true;
+    buildCorridor();
+    showDialogue([
+      { speaker: "系統", text: "安全角後方的走廊通向兩處：下層通道口，與往駕駛室的上行舷梯。" },
+      { speaker: "周朗", text: "連桿卡在船橋。門撐不了多久——解之前，得有人斷後。" },
+      { speaker: "梁子安", text: "許曼跟我。阿傑，別掉隊。" },
+      { speaker: "許曼", text: "……好。" },
+    ]);
+  });
+
+  function tryInteract() {
+    if (!nearby) return;
+    nearby.action();
+  }
+
+  function findNearby() {
+    let best = null, bestD = Infinity;
+    for (const it of interactables) {
+      if (it.id === "zhou" && flags.zhouSealed) continue; // use blast instead
+      const d = dist(player.x, player.y, it.x, it.y);
+      if (d < it.r && d < bestD) {
+        best = it;
+        bestD = d;
+      }
+    }
+    return best;
+  }
+
+  function syncNpcInteractables() {
+    for (const it of interactables) {
+      if (it.id === "xuman") { it.x = xuman.x; it.y = xuman.y; }
+      if (it.id === "ajie") { it.x = ajie.x; it.y = ajie.y; }
+      if (it.id === "zhou") {
+        if (flags.zhouSealed) {
+          it.x = BLAST.x + BLAST.w / 2;
+          it.y = BLAST.y + 40;
+        } else {
+          it.x = zhou.x; it.y = zhou.y;
+        }
+      }
+    }
+  }
+
+  function moveToward(ent, tx, ty, speed, dt, size) {
+    const dx = tx - ent.x, dy = ty - ent.y;
+    const d = Math.sqrt(dx * dx + dy * dy);
+    if (d < 4) return;
+    const mx = (dx / d) * speed * dt;
+    const my = (dy / d) * speed * dt;
+    const nx = ent.x + mx;
+    const ny = ent.y + my;
+    if (!entityBlocked(nx, ent.y, size)) ent.x = nx;
+    if (!entityBlocked(ent.x, ny, size)) ent.y = ny;
+  }
+
+  function updateAliens(dt) {
+    if (!chaseActive || flags.cleared) return;
+    if (alienWakeTimer > 0) return;
+    for (const a of aliens) {
+      if (a.trapped && flags.zhouSealed) {
+        // loiter / scrape at door north side
+        a.x += Math.sin(animT * 7) * 0.4;
+        continue;
+      }
+      // After seal, aliens south of door don't update (filtered); remaining chase lightly then ease
+      let tx = player.x, ty = player.y;
+      if (flags.escorting && !flags.reachedBridge) {
+        tx = xuman.x; ty = xuman.y;
+      }
+      if (flags.zhouSealed) {
+        // reduced pressure — slow drift toward player but stop at stairs mouth
+        moveToward(a, tx, ty, ALIEN_SPEED * 0.45, dt, 26);
+      } else {
+        moveToward(a, tx, ty, ALIEN_SPEED, dt, 26);
+      }
+
+      // Contact → wound once, else knockback
+      if (knockCooldown <= 0 && dist(a.x, a.y, player.x, player.y) < 34) {
+        const ang = Math.atan2(player.y - a.y, player.x - a.x);
+        const kx = player.x + Math.cos(ang) * 50;
+        const ky = player.y + Math.sin(ang) * 50;
+        if (!blocked(kx, player.y)) player.x = kx;
+        if (!blocked(player.x, ky)) player.y = ky;
+        knockCooldown = 1.1;
+        if (!flags.gotWound && !inDialogue) {
+          triggerWound();
+          return;
+        }
+        if (!inDialogue && flags.gotWound && !flags.zhouSealed) {
+          showDialogue([
+            { speaker: "系統", text: "又一次撞擊。路被堵住——周朗在喊你的名字。" },
+          ]);
+        }
+      }
+    }
+  }
+
+  function updateZhou(dt) {
+    if (flags.zhouSealed) return;
+    if (zhou.sealing || (flags.gotWound && !sealSequence)) {
+      // Move Zhou to blast door pull position
+      moveToward(zhou, BLAST.x + BLAST.w / 2, BLAST.y + 20, 140, dt, 26);
+      if (dist(zhou.x, zhou.y, BLAST.x + BLAST.w / 2, BLAST.y + 20) < 20) {
+        autoSealIfReady();
+      }
+    } else if (chaseActive) {
+      // Hold near lower mouth with pipe
+      moveToward(zhou, 200, 520, 90, dt, 26);
+    }
+  }
+
+  function update(dt) {
+    if (!gameStarted) return;
+    updateFade(dt);
+    animT += dt;
+    fogPulse = 0.5 + Math.sin(animT * 0.7) * 0.5;
+    if (knockCooldown > 0) knockCooldown -= dt;
+    if (pipeFx > 0) pipeFx -= dt;
+
+    if (chaseActive && alienWakeTimer > 0) {
+      alienWakeTimer -= dt;
+      if (alienWakeTimer < 0) alienWakeTimer = 0;
+    }
+
+    // Soft-start ambush if player wanders near lower or after ~time — also Zhou/lower interact
+    // Auto ambush when player approaches mid-corridor after start and leaves opening dialogue
+    if (!flags.ambushStarted && !inDialogue && !fading && gameStarted) {
+      if (player.y > 480 || dist(player.x, player.y, LOWER.x + 100, LOWER.y + 40) < 120) {
+        spawnAliens();
+        if (!inDialogue) {
+          showDialogue([
+            { speaker: "系統", text: "下層通道口爆出拖行與骨擦聲——異化者湧上走廊。" },
+            { speaker: "周朗", text: "斷後交給我！護許曼往上！" },
+          ]);
+        }
+      }
+    }
+
+    if (!inDialogue && !fading && endcard.style.display !== "flex") {
+      updateZhou(dt);
+    }
+
+    if (inDialogue || fading || endcard.style.display === "flex") {
+      nearby = null;
+      promptEl.style.display = "none";
+      // Still allow ajie/xuman to ease during dialogue after seal? keep simple — pause
+      syncNpcInteractables();
+      return;
+    }
+
+    // Deny lower after seal with one-shot dialogue
+    if (flags.zhouSealed && inLower(player.x, player.y)) {
+      // push player back north of blast
+      player.y = Math.min(player.y, BLAST.y - 30);
+      if (!deniedLower) {
+        deniedLower = true;
+        showDialogue([
+          { speaker: "系統", text: "鐵門已封。下不去找周朗了。" },
+          { speaker: "周朗", text: "（門後）上去把連桿解開！" },
+        ]);
+        nearby = null;
+        promptEl.style.display = "none";
+        return;
+      }
+    }
+
+    let mx = 0, my = 0;
+    if (keys["w"] || keys["arrowup"]) my -= 1;
+    if (keys["s"] || keys["arrowdown"]) my += 1;
+    if (keys["a"] || keys["arrowleft"]) mx -= 1;
+    if (keys["d"] || keys["arrowright"]) mx += 1;
+
+    let spd = SPEED;
+    if (flags.gotWound) spd *= 0.92; // slight limp
+
+    if (mx !== 0 || my !== 0) {
+      const len = Math.sqrt(mx * mx + my * my);
+      mx /= len; my /= len;
+      const nx = player.x + mx * spd * dt;
+      const ny = player.y + my * spd * dt;
+      if (!blocked(nx, player.y)) player.x = nx;
+      if (!blocked(player.x, ny)) player.y = ny;
+    }
+
+    // Xuman follow
+    if (flags.escorting && xuman.following && !flags.cleared) {
+      const d = dist(xuman.x, xuman.y, player.x, player.y);
+      if (d > 48) {
+        moveToward(xuman, player.x, player.y, XUMAN_SPEED, dt, 26);
+      }
+      if (inStairs(xuman.x, xuman.y)) flags.xumanAtStairs = true;
+    }
+
+    // Ajie flees toward stairs after seal
+    if (ajie.fleeing && flags.zhouSealed && !flags.cleared) {
+      const goal = { x: STAIRS.x + 80, y: STAIRS.y + 120 };
+      if (dist(ajie.x, ajie.y, goal.x, goal.y) > 16) {
+        moveToward(ajie, goal.x, goal.y, AJIE_SPEED, dt, 26);
+      }
+    }
+
+    updateAliens(dt);
+    syncNpcInteractables();
+
+    // Auto-complete if player+xuman at bridge
+    if (flags.zhouSealed && flags.gotWound && !flags.cleared && !flags.reachedBridge) {
+      if (nearBridge(player.x, player.y) && (nearBridge(xuman.x, xuman.y) || dist(xuman.x, xuman.y, player.x, player.y) < 90)) {
+        // soft auto — set prompt ready; don't auto-end without interact to match other levels
+        flags.xumanAtStairs = true;
+      }
+    }
+
+    nearby = findNearby();
+    if (nearby) {
+      promptText.textContent = nearby.prompt;
+      const rect = canvas.getBoundingClientRect();
+      const stage = document.getElementById("stage").getBoundingClientRect();
+      const sx = (nearby.x / W) * rect.width + (rect.left - stage.left);
+      const sy = (nearby.y / H) * rect.height + (rect.top - stage.top) - 20;
+      promptEl.style.left = sx + "px";
+      promptEl.style.top = sy + "px";
+      promptEl.style.display = "block";
+    } else {
+      promptEl.style.display = "none";
+    }
+  }
+
+  function drawPerson(x, y, name, color, isPlayer, wounded) {
+    ctx.fillStyle = "rgba(0,0,0,0.35)";
+    ctx.beginPath();
+    ctx.ellipse(x, y + 14, 14, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(x, y, isPlayer ? 14 : 13, 0, Math.PI * 2);
+    ctx.fill();
+    if (wounded) {
+      // lime scar mark on side
+      ctx.fillStyle = "rgba(200,210,180," + (0.55 + Math.sin(animT * 4) * 0.2) + ")";
+      ctx.beginPath();
+      ctx.ellipse(x + 10, y + 2, 4, 6, 0.3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(160,170,120,0.7)";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+    ctx.fillStyle = isPlayer ? "#1a1814" : "#1a1a1a";
+    ctx.beginPath();
+    ctx.arc(x, y, 6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = isPlayer ? "#e8e0d4" : "rgba(200,190,170,0.85)";
+    ctx.font = "12px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(name, x, y - 20);
+  }
+
+  function draw() {
+    ctx.save();
+    const tilt = Math.sin(animT * 0.7) * 0.008;
+    ctx.translate(W / 2, H / 2);
+    ctx.rotate(tilt);
+    ctx.translate(-W / 2, -H / 2);
+
+    ctx.fillStyle = theme.floor;
+    ctx.fillRect(0, 0, W, H);
+
+    ctx.strokeStyle = "rgba(255,255,255,0.025)";
+    ctx.lineWidth = 1;
+    for (let x = 0; x < W; x += TILE) {
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+    }
+    for (let y = 0; y < H; y += TILE) {
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+    }
+
+    // Stairs zone
+    ctx.fillStyle = "rgba(196,165,116,0.07)";
+    ctx.fillRect(STAIRS.x, STAIRS.y, STAIRS.w, STAIRS.h);
+    ctx.strokeStyle = "rgba(196,165,116,0.35)";
+    ctx.setLineDash([6, 4]);
+    ctx.strokeRect(STAIRS.x, STAIRS.y, STAIRS.w, STAIRS.h);
+    ctx.setLineDash([]);
+    // stair steps visual
+    ctx.strokeStyle = "rgba(180,160,120,0.25)";
+    for (let i = 0; i < 5; i++) {
+      const sy = STAIRS.y + 40 + i * 28;
+      ctx.beginPath();
+      ctx.moveTo(STAIRS.x + 20, sy);
+      ctx.lineTo(STAIRS.x + STAIRS.w - 20, sy);
+      ctx.stroke();
+    }
+    ctx.fillStyle = "#c4a574";
+    ctx.font = "13px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("上行舷梯", STAIRS.x + STAIRS.w / 2, STAIRS.y + 24);
+
+    // Bridge door
+    ctx.fillStyle = flags.reachedBridge ? "#5a4a38" : "#3a3430";
+    ctx.fillRect(BRIDGE.x, BRIDGE.y, BRIDGE.w, BRIDGE.h);
+    ctx.strokeStyle = "rgba(196,165,116,0.7)";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(BRIDGE.x, BRIDGE.y, BRIDGE.w, BRIDGE.h);
+    ctx.fillStyle = "#c4a574";
+    ctx.font = "12px sans-serif";
+    ctx.fillText("駕駛室側門", BRIDGE.x + BRIDGE.w / 2, BRIDGE.y + 32);
+
+    // Lower passage
+    ctx.fillStyle = "#1a1010";
+    ctx.fillRect(LOWER.x, LOWER.y, LOWER.w, LOWER.h);
+    ctx.fillStyle = chaseActive && !flags.zhouSealed
+      ? "rgba(160,60,50," + (0.4 + Math.sin(animT * 5) * 0.2) + ")"
+      : "#5a4038";
+    ctx.font = "12px sans-serif";
+    ctx.fillText(flags.zhouSealed ? "下層（已封）" : "下層通道口", LOWER.x + LOWER.w / 2, LOWER.y + 40);
+
+    // Solids
+    for (const s of solids) {
+      if (s.cleared) continue;
+      if (s.label === "wall" || s.label === "partition") ctx.fillStyle = theme.wall;
+      else if (s.label === "blast") ctx.fillStyle = s.color || "#3a3430";
+      else ctx.fillStyle = s.color || theme.accent;
+      ctx.fillRect(s.x, s.y, s.w, s.h);
+      ctx.strokeStyle = "rgba(0,0,0,0.35)";
+      ctx.strokeRect(s.x + 0.5, s.y + 0.5, s.w - 1, s.h - 1);
+    }
+    ctx.font = "12px sans-serif";
+    ctx.fillStyle = "rgba(200,190,170,0.45)";
+    ctx.textAlign = "center";
+    for (const s of solids) {
+      if (s.label === "crate") ctx.fillText("箱", s.x + s.w / 2, s.y + s.h / 2 + 4);
+      else if (s.label === "bench") ctx.fillText("長椅", s.x + s.w / 2, s.y + s.h / 2 + 4);
+      else if (s.label === "rail") ctx.fillText("欄", s.x + s.w / 2, s.y + s.h / 2 + 4);
+      else if (s.label === "blast" && s.w > 100) ctx.fillText("防爆鐵門", s.x + s.w / 2, s.y + s.h / 2 + 4);
+    }
+
+    // Open blast frame hint
+    if (!flags.zhouSealed) {
+      ctx.strokeStyle = "rgba(180,160,120,0.3)";
+      ctx.strokeRect(BLAST.x, BLAST.y, BLAST.w, BLAST.h);
+      ctx.fillStyle = "rgba(180,160,120,0.4)";
+      ctx.font = "11px sans-serif";
+      ctx.fillText("防爆鐵門（未落）", BLAST.x + BLAST.w / 2, BLAST.y - 8);
+    } else {
+      ctx.fillStyle = "rgba(196,165,116,0.15)";
+      ctx.fillRect(BLAST.x, BLAST.y - 4, BLAST.w, BLAST.h + 8);
+    }
+
+    // Pipe FX
+    if (pipeFx > 0 && !flags.zhouSealed) {
+      ctx.strokeStyle = "rgba(180,190,200," + (pipeFx) + ")";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(zhou.x - 20, zhou.y - 10);
+      ctx.lineTo(zhou.x + 25, zhou.y + 5);
+      ctx.stroke();
+    }
+
+    // Aliens
+    for (const a of aliens) {
+      ctx.fillStyle = "rgba(0,0,0,0.4)";
+      ctx.beginPath();
+      ctx.ellipse(a.x, a.y + 12, 16, 7, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = a.color;
+      ctx.beginPath();
+      ctx.ellipse(a.x, a.y, 14 + Math.sin(animT * 6) * 2, 16, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "rgba(180,40,30,0.7)";
+      ctx.beginPath();
+      ctx.arc(a.x - 4, a.y - 2, 3, 0, Math.PI * 2);
+      ctx.arc(a.x + 5, a.y - 1, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "rgba(200,120,100,0.75)";
+      ctx.font = "11px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(a.label, a.x, a.y - 22);
+    }
+
+    // Zhou — behind door if sealed (dim)
+    if (zhou.visible) {
+      if (flags.zhouSealed) {
+        ctx.globalAlpha = 0.35;
+        drawPerson(BLAST.x + BLAST.w / 2, BLAST.y + 55, "周朗", "#6a7a90");
+        // pipe behind
+        ctx.strokeStyle = "rgba(160,170,180,0.4)";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(BLAST.x + BLAST.w / 2 - 15, BLAST.y + 50);
+        ctx.lineTo(BLAST.x + BLAST.w / 2 + 20, BLAST.y + 60);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      } else {
+        drawPerson(zhou.x, zhou.y, "周朗", "#6a7a90");
+        // steel pipe
+        ctx.strokeStyle = "rgba(180,190,200,0.7)";
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(zhou.x - 18, zhou.y - 8);
+        ctx.lineTo(zhou.x + 22, zhou.y + 6);
+        ctx.stroke();
+      }
+    }
+
+    drawPerson(ajie.x, ajie.y, "阿傑", "#6a8a70");
+    drawPerson(xuman.x, xuman.y, "許曼", "#8a6a80");
+    drawPerson(player.x, player.y, "梁子安", "#c4a574", true, flags.gotWound);
+
+    // Fog
+    const fogA = 0.28 + fogPulse * 0.1;
+    ctx.fillStyle = "rgba(40,36,34," + fogA + ")";
+    ctx.fillRect(0, 0, W, H);
+
+    const g = ctx.createRadialGradient(player.x, player.y, 80, player.x, player.y, 420);
+    g.addColorStop(0, "rgba(0,0,0,0)");
+    g.addColorStop(1, "rgba(6,4,4,0.72)");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+
+    ctx.restore();
+
+    if (fadeAlpha > 0) {
+      ctx.fillStyle = "rgba(0,0,0," + fadeAlpha + ")";
+      ctx.fillRect(0, 0, W, H);
+    }
+  }
+
+  function loop(ts) {
+    if (!lastTs) lastTs = ts;
+    const dt = Math.min(0.05, (ts - lastTs) / 1000);
+    lastTs = ts;
+    update(dt);
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
