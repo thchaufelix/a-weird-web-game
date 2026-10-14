@@ -289,6 +289,7 @@
   const SPEED = 170;
   const XUMAN_SPEED = 95;
   const ALIEN_SPEED = 67;
+  const AJIE_SPEED = 115;
   const ALIEN_WAKE_DELAY = 1;
   const BLOCK_DURATION = 14;
 
@@ -346,7 +347,8 @@
 
   // Companions (world entities, not only interactables)
   let xuman = { x: 520, y: 420, following: false };
-  let ajie = { x: 760, y: 500 };
+  let ajie = { x: 760, y: 500, fleeing: false };
+  let ajieBrokeShown = false; // breakdown dialogue once while fleeing
   let zhou = { x: 900, y: 280 };
 
   // Alienated crew (chase / block — no combat)
@@ -506,6 +508,10 @@
     ];
     chaseActive = true;
     alienWakeTimer = ALIEN_WAKE_DELAY; // wait 1s after appear before moving
+    // 阿傑主動逃向安全角（可一邊崩潰一邊走，唔定格）
+    ajie.fleeing = true;
+    ajie.fleeOx = ajie.x;
+    ajie.fleeOy = ajie.y;
   }
 
   function stripBarrierSolids() {
@@ -596,7 +602,8 @@
     if (!opts.keepEntities) {
       player = { x: 640, y: 500, vx: 0, vy: 0 };
       xuman = { x: 500, y: 440, following: flags.escorting };
-      ajie = { x: 720, y: 520 };
+      ajie = { x: 720, y: 520, fleeing: false };
+      ajieBrokeShown = false;
       zhou = { x: 1020, y: 220 };
       sofaPushed = false;
       doorClosed = false;
@@ -804,9 +811,8 @@
     }
     if (!flags.ajieBroke) {
       flags.ajieBroke = true;
-      // Pull Ajie toward safe for the scene
-      ajie.x = SAFE.x + 60;
-      ajie.y = SAFE.y + 120;
+      ajieBrokeShown = true;
+      ajie.fleeing = true; // keep walking to safe while breakdown plays
       showDialogue([
         { speaker: "阿傑", text: "不對……不對不對——它們為什麼會長那樣——" },
         { speaker: "阿傑", text: "我拍的相……船上不該是這樣的……" },
@@ -926,11 +932,8 @@
       showDialogue([
         { speaker: "周朗", text: "許曼到了。阿傑那邊……你去看看。" },
       ]);
-      // Move ajie closer to safe if far
-      if (!inSafe(ajie.x, ajie.y)) {
-        ajie.x = SAFE.x + 40;
-        ajie.y = SAFE.y + SAFE.h - 40;
-      }
+      // 阿傑自己行去安全角，唔再瞬移
+      ajie.fleeing = true;
       return;
     }
     tryCompleteParty();
@@ -1060,7 +1063,8 @@
       xuman.following = true;
       player.x = 640; player.y = 480;
       xuman.x = 560; xuman.y = 450;
-      ajie.x = 700; ajie.y = 520;
+      ajie.x = 700; ajie.y = 520; ajie.fleeing = false;
+      ajieBrokeShown = false;
       zhou.x = 1020; zhou.y = 220;
       spawnAliens();
       rebuildInteractPrompts();
@@ -1171,6 +1175,60 @@
     if (!entityBlocked(ent.x, ny, size, opt)) ent.y = ny;
   }
 
+  function ajieSafeGoal() {
+    return { x: SAFE.x + 60, y: SAFE.y + 120 };
+  }
+
+  function updateAjieFlee(dt) {
+    // After aliens appear: 阿傑主動經鐵門缺口走向安全角（對話中仍繼續走）
+    if (!chaseActive || flags.cleared) return;
+    if (!ajie.fleeing) ajie.fleeing = true;
+    const goal = ajieSafeGoal();
+    // Breakdown while moving: after he has actually started fleeing
+    if (!flags.ajieBroke && !ajieBrokeShown && !inDialogue && alienWakeTimer <= 0) {
+      var ox = ajie.fleeOx != null ? ajie.fleeOx : 720;
+      var oy = ajie.fleeOy != null ? ajie.fleeOy : 520;
+      if (dist(ajie.x, ajie.y, ox, oy) > 70) {
+        ajieBrokeShown = true;
+        flags.ajieBroke = true;
+        showDialogue([
+          { speaker: "阿傑", text: "不對……不對不對——它們為什麼會長那樣——" },
+          { speaker: "阿傑", text: "我拍的相……船上不該是這樣的……" },
+          { speaker: "周朗", text: "阿傑。喘氣。先活過這一角。" },
+          { speaker: "梁子安", text: "我們都在。先守住。" },
+        ]);
+        pendingDialogueEnd = function () {
+          rebuildInteractPrompts();
+          refreshFlagsHud();
+          updateObjective();
+          tryCompleteParty();
+        };
+        rebuildInteractPrompts();
+        refreshFlagsHud();
+      }
+    }
+
+    if (dist(ajie.x, ajie.y, goal.x, goal.y) <= 14) {
+      ajie.x = goal.x;
+      ajie.y = goal.y;
+      return;
+    }
+    // Waypoint through iron-door gap so partition wall doesn't soft-lock him
+    var doorWp = { x: CHOKE_DOOR.x + CHOKE_DOOR.w / 2 + 8, y: CHOKE_DOOR.y + CHOKE_DOOR.h / 2 };
+    var tx = goal.x, ty = goal.y;
+    if (ajie.x < CHOKE_DOOR.x + CHOKE_DOOR.w + 24) {
+      if (Math.abs(ajie.y - doorWp.y) > 28) {
+        tx = doorWp.x; ty = doorWp.y;
+      } else if (ajie.x < CHOKE_DOOR.x + CHOKE_DOOR.w + 10) {
+        tx = CHOKE_DOOR.x + CHOKE_DOOR.w + 50; ty = doorWp.y;
+      }
+    }
+    var spd = AJIE_SPEED;
+    if (flags.ajieBroke) spd *= 0.85; // slightly slower while breaking down
+    if (inSlime(ajie.x, ajie.y)) spd *= 0.55;
+    moveToward(ajie, tx, ty, spd, dt, 26);
+  }
+
   function updateAliens(dt) {
     if (!chaseActive || flags.cleared) return;
     if (alienWakeTimer > 0) return; // still waiting after spawn
@@ -1243,6 +1301,12 @@
     if (chaseActive && alienWakeTimer > 0) {
       alienWakeTimer -= dt;
       if (alienWakeTimer < 0) alienWakeTimer = 0;
+    }
+
+    // 阿傑逃向安全角：對話／崩潰演出期間仍繼續移動（唔定格）
+    if (chaseActive && !flags.cleared) {
+      updateAjieFlee(dt);
+      syncNpcInteractables();
     }
 
     // Barrier timer
