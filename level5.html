@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>無菌室 · 第5關：游絲與歸位</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    width: 100%; height: 100%;
+    background: #0a0a0c;
+    color: #e8e4dc;
+    font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", "Heiti TC", sans-serif;
+    overflow: hidden;
+    user-select: none;
+  }
+  #wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100%;
+    padding: 12px;
+    gap: 8px;
+  }
+  #titlebar {
+    width: min(1280px, 100%);
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 0 4px;
+    font-size: 13px;
+    letter-spacing: 0.08em;
+    color: #9a958c;
+  }
+  #titlebar strong { color: #d4cfc4; font-weight: 600; }
+  #stage {
+    position: relative;
+    width: min(1280px, 100%);
+    height: min(720px, calc(100vh - 120px));
+    max-height: 720px;
+    background: #111;
+    border: 1px solid #2a2a30;
+    box-shadow: 0 0 40px rgba(0,0,0,0.6);
+    overflow: hidden;
+  }
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    image-rendering: pixelated;
+  }
+  #hud { position: absolute; inset: 0; pointer-events: none; }
+  #objective {
+    position: absolute;
+    top: 16px; left: 16px;
+    max-width: 400px;
+    padding: 10px 14px;
+    background: rgba(8,8,12,0.78);
+    border-left: 3px solid #c4a574;
+    font-size: 14px;
+    line-height: 1.45;
+    color: #e0d8cc;
+  }
+  #objective .label {
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    color: #c4a574;
+    margin-bottom: 4px;
+  }
+  #flags-hud {
+    position: absolute;
+    top: 16px; right: 16px;
+    padding: 8px 12px;
+    background: rgba(8,8,12,0.72);
+    border: 1px solid #2a2a30;
+    font-size: 11px;
+    line-height: 1.6;
+    color: #7a756c;
+    letter-spacing: 0.04em;
+  }
+  #flags-hud .ok { color: #c4a574; }
+  #flags-hud .warn { color: #c47874; }
+  #wound-hud {
+    position: absolute;
+    bottom: 140px; left: 16px;
+    padding: 6px 12px;
+    background: rgba(40,20,16,0.85);
+    border: 1px solid #8a5040;
+    font-size: 12px;
+    color: #c47874;
+    letter-spacing: 0.08em;
+  }
+  #hold-hud {
+    position: absolute;
+    left: 50%; bottom: 140px;
+    transform: translateX(-50%);
+    width: 280px;
+    display: none;
+    pointer-events: none;
+  }
+  #hold-hud .bar-bg {
+    height: 10px;
+    background: rgba(20,20,28,0.9);
+    border: 1px solid #3a3832;
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  #hold-hud .bar-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #8a6a40, #c4a574);
+    transition: none;
+  }
+  #hold-hud .label {
+    margin-top: 6px;
+    text-align: center;
+    font-size: 12px;
+    color: #c4a574;
+    letter-spacing: 0.1em;
+  }
+  #prompt {
+    position: absolute;
+    padding: 6px 12px;
+    background: rgba(12,12,16,0.9);
+    border: 1px solid #c4a574;
+    color: #f0e8d8;
+    font-size: 13px;
+    white-space: nowrap;
+    transform: translate(-50%, -100%);
+    display: none;
+    pointer-events: none;
+  }
+  #prompt kbd {
+    display: inline-block;
+    padding: 1px 6px;
+    margin-right: 4px;
+    border: 1px solid #c4a574;
+    border-radius: 3px;
+    font-size: 11px;
+    font-family: inherit;
+    color: #c4a574;
+  }
+  #dialogue {
+    position: absolute;
+    left: 24px; right: 24px; bottom: 20px;
+    min-height: 110px;
+    padding: 18px 22px 16px;
+    background: rgba(6,6,10,0.92);
+    border: 1px solid #3a3832;
+    border-top: 2px solid #c4a574;
+    display: none;
+    pointer-events: auto;
+  }
+  #dialogue .speaker {
+    font-size: 13px;
+    color: #c4a574;
+    letter-spacing: 0.1em;
+    margin-bottom: 8px;
+  }
+  #dialogue .text {
+    font-size: 16px;
+    line-height: 1.55;
+    color: #efe9df;
+    min-height: 48px;
+  }
+  #dialogue .hint {
+    margin-top: 10px;
+    font-size: 12px;
+    color: #7a756c;
+    text-align: right;
+  }
+  #endcard {
+    position: absolute;
+    inset: 0;
+    background: rgba(4,4,8,0.94);
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    pointer-events: auto;
+    text-align: center;
+    padding: 40px;
+  }
+  #endcard h1 {
+    font-size: 28px;
+    font-weight: 500;
+    letter-spacing: 0.15em;
+    color: #e8e0d4;
+  }
+  #endcard p {
+    font-size: 15px;
+    color: #9a958c;
+    line-height: 1.7;
+    max-width: 440px;
+  }
+  #endcard .seal {
+    margin-top: 12px;
+    font-size: 12px;
+    letter-spacing: 0.2em;
+    color: #c4a574;
+  }
+  #endcard a.continue {
+    margin-top: 8px;
+    padding: 12px 36px;
+    border: 1px solid #c4a574;
+    color: #c4a574;
+    text-decoration: none;
+    font-size: 14px;
+    letter-spacing: 0.15em;
+    background: transparent;
+  }
+  #endcard a.continue:hover {
+    background: rgba(196,165,116,0.12);
+  }
+  #controls-hint {
+    width: min(1280px, 100%);
+    font-size: 12px;
+    color: #5a564e;
+    text-align: center;
+    letter-spacing: 0.04em;
+  }
+  #title-screen {
+    position: absolute;
+    inset: 0;
+    background: #0c0c10;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    z-index: 20;
+    pointer-events: auto;
+  }
+  #title-screen h1 {
+    font-size: 36px;
+    font-weight: 400;
+    letter-spacing: 0.35em;
+    color: #e8e0d4;
+  }
+  #title-screen .sub {
+    font-size: 14px;
+    color: #8a857a;
+    letter-spacing: 0.2em;
+  }
+  #title-screen button {
+    margin-top: 24px;
+    padding: 12px 36px;
+    background: transparent;
+    border: 1px solid #c4a574;
+    color: #c4a574;
+    font-size: 15px;
+    font-family: inherit;
+    letter-spacing: 0.2em;
+    cursor: pointer;
+  }
+  #title-screen button:hover {
+    background: rgba(196,165,116,0.12);
+  }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="titlebar">
+    <span><strong>無菌室</strong> · 第5關：游絲與歸位</span>
+    <span id="scene-label">—</span>
+  </div>
+  <div id="stage">
+    <canvas id="cv" width="1280" height="720"></canvas>
+    <div id="hud">
+      <div id="objective"><div class="label">目標</div><div id="obj-text">—</div></div>
+      <div id="flags-hud"></div>
+      <div id="wound-hud">側腰 · 石灰傷</div>
+      <div id="hold-hud">
+        <div class="bar-bg"><div class="bar-fill" id="hold-fill"></div></div>
+        <div class="label" id="hold-label">按住 E／Space · 推回圓心</div>
+      </div>
+      <div id="prompt"><kbd>E</kbd><span id="prompt-text">互動</span></div>
+    </div>
+    <div id="dialogue">
+      <div class="speaker" id="dlg-speaker"></div>
+      <div class="text" id="dlg-text"></div>
+      <div class="hint">按 E / Space / Enter 繼續</div>
+    </div>
+    <div id="endcard">
+      <h1>游絲歸位。</h1>
+      <p>第5關結束。<br/>迷霧蒸發。手還在抖——但船穩了。<br/>下一章：第6關｜常識與壞軌</p>
+      <div class="seal">— 無菌室 · 第一卷 · 游絲與歸位 —</div>
+      <a class="continue" href="level6.html">進入第6關</a>
+    </div>
+    <div id="title-screen">
+      <h1>無菌室</h1>
+      <div class="sub">第5關：游絲與歸位</div>
+      <div class="sub" style="margin-top:8px;letter-spacing:0.08em;font-size:12px;color:#5a564e">船橋駕駛室 · 側傾地板 · 金屬連桿</div>
+      <button id="start-btn">開始</button>
+    </div>
+  </div>
+  <div id="controls-hint">移動 WASD / 方向鍵　互動／按住 E / Space　對話繼續 E / Space / Enter　（無戰鬥）</div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  const W = 1280, H = 720;
+  const TILE = 40;
+  const PLAYER_SIZE = 28;
+  const SPEED = 165;
+
+  const canvas = document.getElementById("cv");
+  const ctx = canvas.getContext("2d");
+  const objText = document.getElementById("obj-text");
+  const sceneLabel = document.getElementById("scene-label");
+  const flagsHud = document.getElementById("flags-hud");
+  const holdHud = document.getElementById("hold-hud");
+  const holdFill = document.getElementById("hold-fill");
+  const holdLabel = document.getElementById("hold-label");
+  const promptEl = document.getElementById("prompt");
+  const promptText = document.getElementById("prompt-text");
+  const dialogueEl = document.getElementById("dialogue");
+  const dlgSpeaker = document.getElementById("dlg-speaker");
+  const dlgText = document.getElementById("dlg-text");
+  const endcard = document.getElementById("endcard");
+  const titleScreen = document.getElementById("title-screen");
+  const startBtn = document.getElementById("start-btn");
+
+  const flags = {
+    entered: false,
+    nearLink: false,
+    anchored: false,
+    backlash: false,
+    backlashDone: false,
+    cleared: false,
+  };
+
+  let player = { x: 180, y: 360, vx: 0, vy: 0 };
+  let keys = {};
+  let interactables = [];
+  let solids = [];
+  let nearby = null;
+  let dialogueQueue = [];
+  let inDialogue = false;
+  let gameStarted = false;
+  let lastTs = 0;
+  let animT = 0;
+  let pendingDialogueEnd = null;
+  let fogPulse = 0;
+
+  // Puzzle state
+  let linkProgress = 0;      // 0..1
+  let holding = false;
+  let holdActive = false;    // currently in hold interaction zone + key down
+  let swayPhase = 0;
+  let tremorTimer = 0;
+  let clickFlash = 0;
+  let fogDrain = 0;          // after anchored, fog fades
+
+  let xuman = { x: 120, y: 360 };
+
+  // Linkage console center
+  const LINK = { x: 720, y: 340, r: 70 };
+  const DOOR = { x: 40, y: 280, w: 60, h: 160 };
+
+  const theme = {
+    floor: "#161410",
+    wall: "#2a2420",
+    accent: "#3a322c",
+  };
+
+  function setObjective(t) { objText.textContent = t; }
+  function setSceneLabel(t) { sceneLabel.textContent = t; }
+
+  function refreshFlagsHud() {
+    function mark(ok, label) {
+      return '<div class="' + (ok ? "ok" : "") + '">' + (ok ? "✓ " : "· ") + label + "</div>";
+    }
+    flagsHud.innerHTML = [
+      mark(flags.entered, "進入駕駛室"),
+      mark(flags.anchored, "游絲歸位"),
+      mark(flags.backlashDone, "反噬手抖"),
+      mark(flags.cleared, "通關"),
+    ].join("");
+  }
+
+  function updateObjective() {
+    if (flags.cleared) { setObjective("—"); return; }
+    if (!flags.entered) {
+      setObjective("許曼留在門框。走進駕駛室，找卡死的金屬連桿。");
+    } else if (!flags.anchored) {
+      setObjective("走近連桿／游絲，按住 E 或 Space 推回圓心。船體會晃——對準再推。");
+    } else if (!flags.backlashDone) {
+      setObjective("手在抖。站穩——等反噬過去。");
+    } else {
+      setObjective("異象停了。離開／確認通關。");
+    }
+  }
+
+  function showDialogue(lines) {
+    dialogueQueue = lines.slice();
+    inDialogue = true;
+    holding = false;
+    holdActive = false;
+    advanceDialogue();
+  }
+
+  function advanceDialogue() {
+    if (dialogueQueue.length === 0) {
+      dialogueEl.style.display = "none";
+      inDialogue = false;
+      const cb = pendingDialogueEnd;
+      pendingDialogueEnd = null;
+      if (cb) cb();
+      return;
+    }
+    const line = dialogueQueue.shift();
+    dlgSpeaker.textContent = line.speaker;
+    dlgText.textContent = line.text;
+    dialogueEl.style.display = "block";
+  }
+
+  function dist(ax, ay, bx, by) {
+    const dx = ax - bx, dy = ay - by;
+    return Math.sqrt(dx * dx + dy * dy);
+  }
+
+  function rectsOverlap(a, b) {
+    return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+  }
+
+  function blocked(px, py) {
+    const box = { x: px - PLAYER_SIZE / 2, y: py - PLAYER_SIZE / 2, w: PLAYER_SIZE, h: PLAYER_SIZE };
+    for (const s of solids) {
+      if (rectsOverlap(box, s)) return true;
+    }
+    return false;
+  }
+
+  function buildBridge() {
+    setSceneLabel("船橋駕駛室");
+    solids = [];
+    // Outer walls
+    solids.push({ x: 0, y: 0, w: W, h: 48, label: "wall" });
+    solids.push({ x: 0, y: H - 48, w: W, h: 48, label: "wall" });
+    solids.push({ x: 0, y: 0, w: 40, h: H, label: "wall" });
+    solids.push({ x: W - 40, y: 0, w: 40, h: H, label: "wall" });
+    // Console blocks (around linkage — leave approach from west)
+    solids.push({ x: 620, y: 200, w: 200, h: 36, label: "console", color: "#3a342e" });
+    solids.push({ x: 820, y: 280, w: 36, h: 160, label: "console", color: "#3a342e" });
+    solids.push({ x: 620, y: 460, w: 200, h: 36, label: "console", color: "#3a342e" });
+    // Chart table
+    solids.push({ x: 200, y: 480, w: 160, h: 70, label: "table", color: "#4a4030" });
+    // Wheel pedestal visual blocker sides
+    solids.push({ x: 980, y: 300, w: 80, h: 100, label: "wheel", color: "#2e2a26" });
+
+    interactables = [];
+    interactables.push({
+      id: "xuman",
+      x: xuman.x, y: xuman.y, r: 55,
+      label: "許曼",
+      prompt: "與許曼交談",
+      action: interactXuman,
+      isNpc: true,
+      color: "#8a6a80",
+    });
+    interactables.push({
+      id: "link",
+      x: LINK.x, y: LINK.y, r: LINK.r,
+      label: "金屬連桿",
+      prompt: "按住 · 推回圓心",
+      action: interactLink,
+      isLink: true,
+    });
+    interactables.push({
+      id: "wheel",
+      x: 1020, y: 350, r: 60,
+      label: "舵輪",
+      prompt: "查看舵輪",
+      action: interactWheel,
+    });
+    interactables.push({
+      id: "window",
+      x: 640, y: 90, r: 80,
+      label: "船橋窗",
+      prompt: "望窗外",
+      action: interactWindow,
+    });
+
+    flags.entered = true;
+    refreshFlagsHud();
+    updateObjective();
+  }
+
+  function interactXuman() {
+    if (!flags.anchored) {
+      showDialogue([
+        { speaker: "許曼", text: "我留在門框。進去吧——連桿在中央那座金屬座上。" },
+        { speaker: "許曼", text: "船還在晃。推的時候……對準圓心。別急。" },
+        { speaker: "梁子安", text: "（按着側腰）嗯。" },
+      ]);
+      return;
+    }
+    if (!flags.backlashDone) {
+      showDialogue([
+        { speaker: "許曼", text: "你的手……在抖。" },
+        { speaker: "梁子安", text: "反噬。等它過去。" },
+      ]);
+      return;
+    }
+    showDialogue([
+      { speaker: "許曼", text: "霧散了。外面……像被什麼規律按回去一樣。" },
+      { speaker: "梁子安", text: "規律。先靠岸——再說。" },
+    ]);
+  }
+
+  function interactWheel() {
+    if (!flags.anchored) {
+      showDialogue([
+        { speaker: "系統", text: "舵輪卡死。實習船員鎖門時把它咬在歪位——真正要解的是連桿游絲。" },
+      ]);
+      return;
+    }
+    showDialogue([
+      { speaker: "系統", text: "舵輪鬆了一線。船體不再往同一側傾。" },
+    ]);
+  }
+
+  function interactWindow() {
+    if (!flags.anchored) {
+      showDialogue([
+        { speaker: "系統", text: "窗外濃霧壓着舷窗。遠岸輪廓洇成一塊灰。" },
+        { speaker: "梁子安", text: "先解連桿。" },
+      ]);
+      return;
+    }
+    showDialogue([
+      { speaker: "系統", text: "迷霧正在蒸發。岸線重新變硬、變清楚。" },
+    ]);
+  }
+
+  function interactLink() {
+    if (flags.anchored) {
+      showDialogue([
+        { speaker: "系統", text: "游絲已歸位。金屬座微微發熱，像剛被什麼規矩摸過。" },
+      ]);
+      return;
+    }
+    // Start hold mode hint
+    showDialogue([
+      { speaker: "系統", text: "卡死的金屬連桿與游絲偏離圓心數毫米。船體每晃一下，偏移就再咬緊一點。" },
+      { speaker: "梁子安", text: "（伸手）按住——慢慢推回去。" },
+      { speaker: "系統", text: "靠近連桿後按住 E 或 Space。晃動大時進度會倒退——等穩再推。" },
+    ]);
+  }
+
+  function completeAnchor() {
+    if (flags.anchored) return;
+    flags.anchored = true;
+    clickFlash = 1;
+    holdActive = false;
+    holding = false;
+    holdHud.style.display = "none";
+    refreshFlagsHud();
+    updateObjective();
+    showDialogue([
+      { speaker: "系統", text: "——咔。游絲歸位。" },
+      { speaker: "系統", text: "迷霧像被抽走一樣變薄。異象停了。船橋裡只剩金屬冷卻的聲音。" },
+      { speaker: "梁子安", text: "（手突然抖）……這是規律。" },
+      { speaker: "許曼", text: "（門框外）子安？你還好嗎？" },
+      { speaker: "梁子安", text: "反噬。站一下就好。" },
+    ]);
+    pendingDialogueEnd = function () {
+      flags.backlash = true;
+      tremorTimer = 4.5;
+      refreshFlagsHud();
+      updateObjective();
+    };
+  }
+
+  function finishBacklash() {
+    if (flags.backlashDone) return;
+    flags.backlashDone = true;
+    flags.backlash = false;
+    refreshFlagsHud();
+    updateObjective();
+    showDialogue([
+      { speaker: "系統", text: "手抖漸漸收斂。側腰石灰傷還在，但腳底穩了。" },
+      { speaker: "許曼", text: "霧散了。我們……可以靠岸了嗎？" },
+      { speaker: "梁子安", text: "可以。下去——找阿傑。相紙還在。" },
+      { speaker: "系統", text: "通關：游絲歸位 · 反噬過去。旁白：這是規律——不必給它名字。" },
+    ]);
+    pendingDialogueEnd = function () {
+      flags.cleared = true;
+      endcard.style.display = "flex";
+      refreshFlagsHud();
+      updateObjective();
+    };
+  }
+
+  // ——— Input ———
+  window.addEventListener("keydown", function (e) {
+    const k = e.key.toLowerCase();
+    keys[k] = true;
+    if (["arrowup","arrowdown","arrowleft","arrowright"," "].indexOf(k) >= 0 || e.key === " ") {
+      e.preventDefault();
+    }
+    if (!gameStarted) return;
+    if (e.key === " " || k === "e" || k === "enter") {
+      if (inDialogue) {
+        e.preventDefault();
+        advanceDialogue();
+      } else if (!flags.cleared && endcard.style.display !== "flex") {
+        e.preventDefault();
+        if (nearby && nearby.isLink && !flags.anchored) {
+          holding = true;
+        } else {
+          tryInteract();
+        }
+      }
+    }
+  });
+  window.addEventListener("keyup", function (e) {
+    const k = e.key.toLowerCase();
+    keys[k] = false;
+    if (k === "e" || k === " " || e.key === " ") {
+      holding = false;
+    }
+  });
+
+  startBtn.addEventListener("click", function () {
+    titleScreen.style.display = "none";
+    gameStarted = true;
+    buildBridge();
+    showDialogue([
+      { speaker: "系統", text: "駕駛室側傾。地板像一塊被擰歪的鐵。" },
+      { speaker: "許曼", text: "我留門框。你進去——把連桿解開。周朗說的。" },
+      { speaker: "梁子安", text: "（側腰灼着）我進去。" },
+    ]);
+  });
+
+  function tryInteract() {
+    if (!nearby) return;
+    nearby.action();
+  }
+
+  function findNearby() {
+    let best = null, bestD = Infinity;
+    for (const it of interactables) {
+      const d = dist(player.x, player.y, it.x, it.y);
+      if (d < it.r && d < bestD) {
+        best = it;
+        bestD = d;
+      }
+    }
+    return best;
+  }
+
+  function update(dt) {
+    if (!gameStarted) return;
+    animT += dt;
+    swayPhase += dt;
+    fogPulse = 0.5 + Math.sin(animT * 0.7) * 0.5;
+    if (clickFlash > 0) clickFlash -= dt;
+
+    if (flags.anchored && fogDrain < 1) {
+      fogDrain = Math.min(1, fogDrain + dt * 0.25);
+    }
+
+    if (flags.backlash && tremorTimer > 0) {
+      tremorTimer -= dt;
+      if (tremorTimer <= 0) {
+        tremorTimer = 0;
+        finishBacklash();
+      }
+    }
+
+    if (inDialogue || endcard.style.display === "flex") {
+      nearby = null;
+      promptEl.style.display = "none";
+      holdHud.style.display = "none";
+      holdActive = false;
+      return;
+    }
+
+    // Movement
+    let mx = 0, my = 0;
+    if (keys["w"] || keys["arrowup"]) my -= 1;
+    if (keys["s"] || keys["arrowdown"]) my += 1;
+    if (keys["a"] || keys["arrowleft"]) mx -= 1;
+    if (keys["d"] || keys["arrowright"]) mx += 1;
+    if (mx || my) {
+      const len = Math.sqrt(mx * mx + my * my);
+      mx /= len; my /= len;
+      let spd = SPEED;
+      // wound slight slow
+      spd *= 0.92;
+      // tremor control noise
+      if (flags.backlash && tremorTimer > 0) {
+        mx += (Math.sin(animT * 18) * 0.55);
+        my += (Math.cos(animT * 14) * 0.45);
+        const l2 = Math.sqrt(mx * mx + my * my) || 1;
+        mx /= l2; my /= l2;
+        spd *= 0.7;
+      }
+      // Can't move well while holding link
+      if (holdActive) { mx = 0; my = 0; }
+      const nx = player.x + mx * spd * dt;
+      const ny = player.y + my * spd * dt;
+      if (!blocked(nx, player.y)) player.x = nx;
+      if (!blocked(player.x, ny)) player.y = ny;
+    }
+
+    // Sync npc interactable
+    for (const it of interactables) {
+      if (it.id === "xuman") { it.x = xuman.x; it.y = xuman.y; }
+    }
+
+    nearby = findNearby();
+
+    // Hold-to-push puzzle
+    holdActive = false;
+    if (nearby && nearby.isLink && !flags.anchored && holding) {
+      holdActive = true;
+      // Sway intensity 0..1 — high sway slows / reverses progress
+      const sway = Math.abs(Math.sin(swayPhase * 1.35));
+      const aligned = sway < 0.42; // green window
+      let rate = aligned ? 0.38 : -0.22;
+      // Extra difficulty: higher progress → slightly harder
+      if (aligned) rate *= (1 - linkProgress * 0.15);
+      linkProgress = Math.max(0, Math.min(1, linkProgress + rate * dt));
+      holdHud.style.display = "block";
+      holdFill.style.width = (linkProgress * 100) + "%";
+      holdLabel.textContent = aligned
+        ? "對準中 · 繼續按住"
+        : "船體晃動 · 進度回退";
+      holdLabel.style.color = aligned ? "#c4a574" : "#c47874";
+      if (linkProgress >= 1) {
+        completeAnchor();
+      }
+    } else if (!flags.anchored && nearby && nearby.isLink) {
+      holdHud.style.display = "block";
+      holdFill.style.width = (linkProgress * 100) + "%";
+      holdLabel.textContent = "按住 E／Space · 推回圓心";
+      holdLabel.style.color = "#c4a574";
+      // Slow natural drift when not holding
+      linkProgress = Math.max(0, linkProgress - dt * 0.04);
+      holdFill.style.width = (linkProgress * 100) + "%";
+    } else {
+      holdHud.style.display = "none";
+    }
+
+    if (nearby) {
+      promptText.textContent = nearby.isLink && !flags.anchored
+        ? "按住 · 推回圓心"
+        : nearby.prompt;
+      const rect = canvas.getBoundingClientRect();
+      const stage = document.getElementById("stage").getBoundingClientRect();
+      const sx = (nearby.x / W) * rect.width + (rect.left - stage.left);
+      const sy = (nearby.y / H) * rect.height + (rect.top - stage.top) - 20;
+      promptEl.style.left = sx + "px";
+      promptEl.style.top = sy + "px";
+      promptEl.style.display = holdActive ? "none" : "block";
+    } else {
+      promptEl.style.display = "none";
+    }
+  }
+
+  function drawPerson(x, y, name, color, isPlayer, wounded) {
+    ctx.fillStyle = "rgba(0,0,0,0.35)";
+    ctx.beginPath();
+    ctx.ellipse(x, y + 14, 14, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(x, y, isPlayer ? 14 : 13, 0, Math.PI * 2);
+    ctx.fill();
+    if (wounded) {
+      ctx.fillStyle = "rgba(200,210,180," + (0.55 + Math.sin(animT * 4) * 0.2) + ")";
+      ctx.beginPath();
+      ctx.ellipse(x + 10, y + 2, 4, 6, 0.3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.fillStyle = isPlayer ? "#1a1814" : "#1a1a1a";
+    ctx.beginPath();
+    ctx.arc(x, y, 6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = isPlayer ? "#e8e0d4" : "rgba(200,190,170,0.85)";
+    ctx.font = "12px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(name, x, y - 20);
+  }
+
+  function draw() {
+    ctx.save();
+    // Tilt stronger before anchor
+    const tiltAmp = flags.anchored ? 0.004 : 0.022;
+    const tilt = Math.sin(swayPhase * 1.35) * tiltAmp;
+    ctx.translate(W / 2, H / 2);
+    ctx.rotate(tilt);
+    ctx.translate(-W / 2, -H / 2);
+
+    ctx.fillStyle = theme.floor;
+    ctx.fillRect(0, 0, W, H);
+
+    // Floor grain / tiles
+    ctx.strokeStyle = "rgba(255,255,255,0.025)";
+    ctx.lineWidth = 1;
+    for (let x = 0; x < W; x += TILE) {
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+    }
+    for (let y = 0; y < H; y += TILE) {
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+    }
+
+    // Side door frame
+    ctx.fillStyle = "#3a3430";
+    ctx.fillRect(DOOR.x, DOOR.y, DOOR.w, DOOR.h);
+    ctx.strokeStyle = "rgba(196,165,116,0.55)";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(DOOR.x, DOOR.y, DOOR.w, DOOR.h);
+    ctx.fillStyle = "#c4a574";
+    ctx.font = "12px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("側門", DOOR.x + DOOR.w / 2, DOOR.y - 10);
+
+    // Windows strip
+    ctx.fillStyle = flags.anchored
+      ? "rgba(120,140,160," + (0.15 + fogDrain * 0.25) + ")"
+      : "rgba(60,55,50,0.5)";
+    ctx.fillRect(200, 48, 880, 50);
+    ctx.fillStyle = "rgba(200,190,170,0.4)";
+    ctx.font = "12px sans-serif";
+    ctx.fillText(flags.anchored ? "霧在散" : "濃霧舷窗", 640, 78);
+
+    // Solids
+    for (const s of solids) {
+      if (s.label === "wall") ctx.fillStyle = theme.wall;
+      else ctx.fillStyle = s.color || theme.accent;
+      ctx.fillRect(s.x, s.y, s.w, s.h);
+      ctx.strokeStyle = "rgba(0,0,0,0.35)";
+      ctx.strokeRect(s.x + 0.5, s.y + 0.5, s.w - 1, s.h - 1);
+    }
+    ctx.fillStyle = "rgba(200,190,170,0.4)";
+    ctx.font = "12px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("海圖桌", 280, 520);
+    ctx.fillText("舵輪", 1020, 355);
+
+    // Linkage mechanism
+    const cx = LINK.x, cy = LINK.y;
+    ctx.fillStyle = "#2a2622";
+    ctx.beginPath();
+    ctx.arc(cx, cy, 54, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = flags.anchored ? "#c4a574" : "#6a6050";
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    // Outer ring
+    ctx.strokeStyle = "rgba(180,160,120,0.35)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 40, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Hairspring / linkage offset from center
+    const offset = flags.anchored ? 0 : (1 - linkProgress) * 22;
+    const ang = swayPhase * 1.1 + linkProgress * 2;
+    const lx = cx + Math.cos(ang) * offset;
+    const ly = cy + Math.sin(ang) * offset;
+
+    // Spring coils
+    ctx.strokeStyle = flags.anchored ? "rgba(196,165,116,0.9)" : "rgba(160,140,100,0.75)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    for (let i = 0; i < 48; i++) {
+      const t = i / 48;
+      const r = 8 + t * 28;
+      const a = t * Math.PI * 5 + ang;
+      const px = lx + Math.cos(a) * r * (0.3 + (1 - linkProgress) * 0.4);
+      const py = ly + Math.sin(a) * r * (0.3 + (1 - linkProgress) * 0.4);
+      if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+
+    // Center pin
+    ctx.fillStyle = flags.anchored ? "#e8dcc0" : "#a09070";
+    ctx.beginPath();
+    ctx.arc(lx, ly, 5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Ideal center mark
+    ctx.strokeStyle = "rgba(196,165,116," + (0.3 + linkProgress * 0.5) + ")";
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 3]);
+    ctx.beginPath();
+    ctx.arc(cx, cy, 6, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    if (clickFlash > 0) {
+      ctx.fillStyle = "rgba(196,165,116," + (clickFlash * 0.45) + ")";
+      ctx.beginPath();
+      ctx.arc(cx, cy, 80 * (1.2 - clickFlash), 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.fillStyle = "#c4a574";
+    ctx.font = "13px sans-serif";
+    ctx.fillText(flags.anchored ? "游絲 · 已歸位" : "金屬連桿／游絲", cx, cy + 78);
+
+    // Alignment hint ring when near
+    if (!flags.anchored && nearby && nearby.isLink) {
+      const sway = Math.abs(Math.sin(swayPhase * 1.35));
+      const ok = sway < 0.42;
+      ctx.strokeStyle = ok ? "rgba(120,180,100,0.55)" : "rgba(180,80,70,0.45)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(cx, cy, 62, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    drawPerson(xuman.x, xuman.y, "許曼", "#8a6a80");
+    drawPerson(player.x, player.y, "梁子安", "#c4a574", true, true);
+
+    // Fog overlay
+    const fogBase = flags.anchored ? 0.35 * (1 - fogDrain) : 0.45 + fogPulse * 0.12;
+    ctx.fillStyle = "rgba(40,36,34," + fogBase + ")";
+    ctx.fillRect(0, 0, W, H);
+
+    const g = ctx.createRadialGradient(player.x, player.y, 70, player.x, player.y, 400);
+    g.addColorStop(0, "rgba(0,0,0,0)");
+    g.addColorStop(1, "rgba(6,4,4," + (0.55 + (1 - fogDrain) * 0.2) + ")");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+
+    // Tremor vignette
+    if (flags.backlash && tremorTimer > 0) {
+      ctx.fillStyle = "rgba(120,40,30," + (0.08 + Math.sin(animT * 20) * 0.04) + ")";
+      ctx.fillRect(0, 0, W, H);
+    }
+
+    ctx.restore();
+  }
+
+  function loop(ts) {
+    if (!lastTs) lastTs = ts;
+    const dt = Math.min(0.05, (ts - lastTs) / 1000);
+    lastTs = ts;
+    update(dt);
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  refreshFlagsHud();
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

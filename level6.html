@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>無菌室 · 第6關：常識與壞軌</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    width: 100%; height: 100%;
+    background: #0a0a0c;
+    color: #e8e4dc;
+    font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", "Heiti TC", sans-serif;
+    overflow: hidden;
+    user-select: none;
+  }
+  #wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100%;
+    padding: 12px;
+    gap: 8px;
+  }
+  #titlebar {
+    width: min(1280px, 100%);
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 0 4px;
+    font-size: 13px;
+    letter-spacing: 0.08em;
+    color: #9a958c;
+  }
+  #titlebar strong { color: #d4cfc4; font-weight: 600; }
+  #stage {
+    position: relative;
+    width: min(1280px, 100%);
+    height: min(720px, calc(100vh - 120px));
+    max-height: 720px;
+    background: #111;
+    border: 1px solid #2a2a30;
+    box-shadow: 0 0 40px rgba(0,0,0,0.6);
+    overflow: hidden;
+  }
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    image-rendering: pixelated;
+  }
+  #hud { position: absolute; inset: 0; pointer-events: none; }
+  #objective {
+    position: absolute;
+    top: 16px; left: 16px;
+    max-width: 420px;
+    padding: 10px 14px;
+    background: rgba(8,8,12,0.78);
+    border-left: 3px solid #c4a574;
+    font-size: 14px;
+    line-height: 1.45;
+    color: #e0d8cc;
+  }
+  #objective .label {
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    color: #c4a574;
+    margin-bottom: 4px;
+  }
+  #flags-hud {
+    position: absolute;
+    top: 16px; right: 16px;
+    padding: 8px 12px;
+    background: rgba(8,8,12,0.72);
+    border: 1px solid #2a2a30;
+    font-size: 11px;
+    line-height: 1.6;
+    color: #7a756c;
+    letter-spacing: 0.04em;
+  }
+  #flags-hud .ok { color: #c4a574; }
+  #wound-hud {
+    position: absolute;
+    bottom: 140px; left: 16px;
+    padding: 6px 12px;
+    background: rgba(40,20,16,0.85);
+    border: 1px solid #8a5040;
+    font-size: 12px;
+    color: #c47874;
+    letter-spacing: 0.08em;
+  }
+  #prompt {
+    position: absolute;
+    padding: 6px 12px;
+    background: rgba(12,12,16,0.9);
+    border: 1px solid #c4a574;
+    color: #f0e8d8;
+    font-size: 13px;
+    white-space: nowrap;
+    transform: translate(-50%, -100%);
+    display: none;
+    pointer-events: none;
+  }
+  #prompt kbd {
+    display: inline-block;
+    padding: 1px 6px;
+    margin-right: 4px;
+    border: 1px solid #c4a574;
+    border-radius: 3px;
+    font-size: 11px;
+    font-family: inherit;
+    color: #c4a574;
+  }
+  #dialogue {
+    position: absolute;
+    left: 24px; right: 24px; bottom: 20px;
+    min-height: 110px;
+    padding: 18px 22px 16px;
+    background: rgba(6,6,10,0.92);
+    border: 1px solid #3a3832;
+    border-top: 2px solid #c4a574;
+    display: none;
+    pointer-events: auto;
+  }
+  #dialogue .speaker {
+    font-size: 13px;
+    color: #c4a574;
+    letter-spacing: 0.1em;
+    margin-bottom: 8px;
+  }
+  #dialogue .text {
+    font-size: 16px;
+    line-height: 1.55;
+    color: #efe9df;
+    min-height: 48px;
+  }
+  #dialogue .hint {
+    margin-top: 10px;
+    font-size: 12px;
+    color: #7a756c;
+    text-align: right;
+  }
+  #endcard {
+    position: absolute;
+    inset: 0;
+    background: rgba(4,4,8,0.94);
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    pointer-events: auto;
+    text-align: center;
+    padding: 40px;
+  }
+  #endcard h1 {
+    font-size: 28px;
+    font-weight: 500;
+    letter-spacing: 0.15em;
+    color: #e8e0d4;
+  }
+  #endcard p {
+    font-size: 15px;
+    color: #9a958c;
+    line-height: 1.7;
+    max-width: 480px;
+  }
+  #endcard .seal {
+    margin-top: 12px;
+    font-size: 12px;
+    letter-spacing: 0.2em;
+    color: #c4a574;
+  }
+  #endcard a.continue {
+    margin-top: 8px;
+    padding: 12px 36px;
+    border: 1px solid #c4a574;
+    color: #c4a574;
+    text-decoration: none;
+    font-size: 14px;
+    letter-spacing: 0.15em;
+    background: transparent;
+  }
+  #endcard a.continue:hover {
+    background: rgba(196,165,116,0.12);
+  }
+  #controls-hint {
+    width: min(1280px, 100%);
+    font-size: 12px;
+    color: #5a564e;
+    text-align: center;
+    letter-spacing: 0.04em;
+  }
+  #title-screen {
+    position: absolute;
+    inset: 0;
+    background: #0c0c10;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    z-index: 20;
+    pointer-events: auto;
+  }
+  #title-screen h1 {
+    font-size: 36px;
+    font-weight: 400;
+    letter-spacing: 0.35em;
+    color: #e8e0d4;
+  }
+  #title-screen .sub {
+    font-size: 14px;
+    color: #8a857a;
+    letter-spacing: 0.2em;
+  }
+  #title-screen button {
+    margin-top: 24px;
+    padding: 12px 36px;
+    background: transparent;
+    border: 1px solid #c4a574;
+    color: #c4a574;
+    font-size: 15px;
+    font-family: inherit;
+    letter-spacing: 0.2em;
+    cursor: pointer;
+  }
+  #title-screen button:hover {
+    background: rgba(196,165,116,0.12);
+  }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="titlebar">
+    <span><strong>無菌室</strong> · 第6關：常識與壞軌</span>
+    <span id="scene-label">—</span>
+  </div>
+  <div id="stage">
+    <canvas id="cv" width="1280" height="720"></canvas>
+    <div id="hud">
+      <div id="objective"><div class="label">目標</div><div id="obj-text">—</div></div>
+      <div id="flags-hud"></div>
+      <div id="wound-hud">側腰 · 石灰傷</div>
+      <div id="prompt"><kbd>E</kbd><span id="prompt-text">互動</span></div>
+    </div>
+    <div id="dialogue">
+      <div class="speaker" id="dlg-speaker"></div>
+      <div class="text" id="dlg-text"></div>
+      <div class="hint">按 E / Space / Enter 繼續</div>
+    </div>
+    <div id="endcard">
+      <h1>第一卷 · 客船 完</h1>
+      <p>相紙收好。周朗變成墨斑——常識說那是中暑。<br/>
+      明天：白石中學後巷「廢棄空地」。<br/>
+      預告卷二入口已解鎖提示。</p>
+      <div class="seal">— 無菌室 · 第一卷 · 常識與壞軌 —</div>
+      <a class="continue" href="index.html">回目錄</a>
+    </div>
+    <div id="title-screen">
+      <h1>無菌室</h1>
+      <div class="sub">第6關：常識與壞軌</div>
+      <div class="sub" style="margin-top:8px;letter-spacing:0.08em;font-size:12px;color:#5a564e">靠岸客艙門口 · 舷梯 · 拍立得</div>
+      <button id="start-btn">開始</button>
+    </div>
+  </div>
+  <div id="controls-hint">移動 WASD / 方向鍵　互動 E / Space　對話繼續 E / Space / Enter</div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  const W = 1280, H = 720;
+  const TILE = 40;
+  const PLAYER_SIZE = 28;
+  const SPEED = 170;
+
+  const canvas = document.getElementById("cv");
+  const ctx = canvas.getContext("2d");
+  const objText = document.getElementById("obj-text");
+  const sceneLabel = document.getElementById("scene-label");
+  const flagsHud = document.getElementById("flags-hud");
+  const promptEl = document.getElementById("prompt");
+  const promptText = document.getElementById("prompt-text");
+  const dialogueEl = document.getElementById("dialogue");
+  const dlgSpeaker = document.getElementById("dlg-speaker");
+  const dlgText = document.getElementById("dlg-text");
+  const endcard = document.getElementById("endcard");
+  const titleScreen = document.getElementById("title-screen");
+  const startBtn = document.getElementById("start-btn");
+
+  const flags = {
+    photoBlot: false,
+    askedAjie: false,
+    xumanConfirm: false,
+    photoKept: false,
+    heardGoal: false,
+    cleared: false,
+  };
+
+  let player = { x: 640, y: 520, vx: 0, vy: 0 };
+  let keys = {};
+  let interactables = [];
+  let solids = [];
+  let nearby = null;
+  let dialogueQueue = [];
+  let inDialogue = false;
+  let gameStarted = false;
+  let lastTs = 0;
+  let animT = 0;
+  let pendingDialogueEnd = null;
+  let fogPulse = 0;
+
+  let ajie = { x: 480, y: 400 };
+  let xuman = { x: 780, y: 380 };
+
+  const PHOTO = { x: 300, y: 320 };
+  const GANGWAY = { x: 1000, y: 280, w: 160, h: 200 };
+  const NOTICE = { x: 200, y: 180 };
+
+  const theme = {
+    floor: "#171512",
+    wall: "#2c2622",
+    accent: "#3a322c",
+  };
+
+  function setObjective(t) { objText.textContent = t; }
+  function setSceneLabel(t) { sceneLabel.textContent = t; }
+
+  function chainDone() {
+    return flags.photoBlot && flags.askedAjie && flags.xumanConfirm && flags.photoKept && flags.heardGoal;
+  }
+
+  function refreshFlagsHud() {
+    function mark(ok, label) {
+      return '<div class="' + (ok ? "ok" : "") + '">' + (ok ? "✓ " : "· ") + label + "</div>";
+    }
+    flagsHud.innerHTML = [
+      mark(flags.photoBlot, "拍立得墨斑"),
+      mark(flags.askedAjie, "問阿傑周朗"),
+      mark(flags.xumanConfirm, "許曼確認"),
+      mark(flags.photoKept, "收好相紙"),
+      mark(flags.heardGoal, "白石中學後巷"),
+    ].join("");
+  }
+
+  function updateObjective() {
+    if (flags.cleared) { setObjective("—"); return; }
+    if (!flags.photoBlot) {
+      setObjective("靠岸了。拿出拍立得——看看那張合照。");
+    } else if (!flags.askedAjie) {
+      setObjective("周朗的位置變成墨斑。去問阿傑：「周朗呢？」");
+    } else if (!flags.xumanConfirm) {
+      setObjective("找許曼——確認周朗到底有沒有引開那些東西。");
+    } else if (!flags.photoKept) {
+      setObjective("把相紙收好。別讓常識把它抹掉。");
+    } else if (!flags.heardGoal) {
+      setObjective("到舷梯口／告示——確認明天的目標。");
+    } else {
+      setObjective("對話鏈完成。在舷梯口結束本章。");
+    }
+  }
+
+  function rebuildPrompts() {
+    for (const it of interactables) {
+      if (it.id === "photo") {
+        it.prompt = flags.photoBlot
+          ? (flags.photoKept ? "拍立得（已收）" : "再看／收好相紙")
+          : "檢視拍立得";
+      } else if (it.id === "ajie") {
+        it.prompt = flags.askedAjie ? "與阿傑交談" : "問阿傑：周朗呢？";
+      } else if (it.id === "xuman") {
+        it.prompt = flags.xumanConfirm ? "與許曼交談" : "與許曼確認";
+      } else if (it.id === "notice") {
+        it.prompt = flags.heardGoal ? "告示（已讀）" : "看港口告示";
+      } else if (it.id === "gangway") {
+        it.prompt = chainDone() ? "結束本章" : "舷梯（靠岸）";
+      }
+    }
+  }
+
+  function showDialogue(lines) {
+    dialogueQueue = lines.slice();
+    inDialogue = true;
+    advanceDialogue();
+  }
+
+  function advanceDialogue() {
+    if (dialogueQueue.length === 0) {
+      dialogueEl.style.display = "none";
+      inDialogue = false;
+      const cb = pendingDialogueEnd;
+      pendingDialogueEnd = null;
+      if (cb) cb();
+      return;
+    }
+    const line = dialogueQueue.shift();
+    dlgSpeaker.textContent = line.speaker;
+    dlgText.textContent = line.text;
+    dialogueEl.style.display = "block";
+  }
+
+  function dist(ax, ay, bx, by) {
+    const dx = ax - bx, dy = ay - by;
+    return Math.sqrt(dx * dx + dy * dy);
+  }
+
+  function rectsOverlap(a, b) {
+    return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+  }
+
+  function blocked(px, py) {
+    const box = { x: px - PLAYER_SIZE / 2, y: py - PLAYER_SIZE / 2, w: PLAYER_SIZE, h: PLAYER_SIZE };
+    for (const s of solids) {
+      if (rectsOverlap(box, s)) return true;
+    }
+    return false;
+  }
+
+  function buildDock() {
+    setSceneLabel("靠岸 · 客艙門口／舷梯");
+    solids = [];
+    solids.push({ x: 0, y: 0, w: W, h: 48, label: "wall" });
+    solids.push({ x: 0, y: H - 48, w: W, h: 48, label: "wall" });
+    solids.push({ x: 0, y: 0, w: 40, h: H, label: "wall" });
+    solids.push({ x: W - 40, y: 0, w: 40, h: H, label: "wall" });
+    // Cabin doorway jambs
+    solids.push({ x: 520, y: 120, w: 40, h: 160, label: "door", color: "#3a3430" });
+    solids.push({ x: 720, y: 120, w: 40, h: 160, label: "door", color: "#3a3430" });
+    // Bench
+    solids.push({ x: 140, y: 500, w: 200, h: 50, label: "bench", color: "#4a4030" });
+    // Rail near gangway
+    solids.push({ x: 980, y: 480, w: 200, h: 24, label: "rail", color: "#3a3830" });
+
+    interactables = [];
+    interactables.push({
+      id: "photo",
+      x: PHOTO.x, y: PHOTO.y, r: 60,
+      label: "拍立得",
+      prompt: "檢視拍立得",
+      action: interactPhoto,
+    });
+    interactables.push({
+      id: "ajie",
+      x: ajie.x, y: ajie.y, r: 55,
+      label: "阿傑",
+      prompt: "問阿傑：周朗呢？",
+      action: interactAjie,
+      isNpc: true,
+      color: "#6a8a70",
+    });
+    interactables.push({
+      id: "xuman",
+      x: xuman.x, y: xuman.y, r: 55,
+      label: "許曼",
+      prompt: "與許曼確認",
+      action: interactXuman,
+      isNpc: true,
+      color: "#8a6a80",
+    });
+    interactables.push({
+      id: "notice",
+      x: NOTICE.x, y: NOTICE.y, r: 55,
+      label: "港口告示",
+      prompt: "看港口告示",
+      action: interactNotice,
+    });
+    interactables.push({
+      id: "gangway",
+      x: GANGWAY.x + GANGWAY.w / 2, y: GANGWAY.y + GANGWAY.h / 2, r: 90,
+      label: "舷梯",
+      prompt: "舷梯（靠岸）",
+      action: interactGangway,
+      isExit: true,
+    });
+
+    rebuildPrompts();
+    refreshFlagsHud();
+    updateObjective();
+  }
+
+  function interactPhoto() {
+    if (!flags.photoBlot) {
+      flags.photoBlot = true;
+      refreshFlagsHud();
+      updateObjective();
+      rebuildPrompts();
+      showDialogue([
+        { speaker: "系統", text: "你抽出拍立得。合照邊緣還捲着，影像卻不對了。" },
+        { speaker: "梁子安", text: "……周朗呢？" },
+        { speaker: "系統", text: "他站過的位置，變成一塊不規則的墨斑。像被常識用墨水蓋掉。" },
+        { speaker: "梁子安", text: "（側腰又灼了一下）不可能。" },
+      ]);
+      return;
+    }
+    if (!flags.photoKept) {
+      // Can keep after confirming with others, or early keep after blot
+      if (!flags.askedAjie || !flags.xumanConfirm) {
+        showDialogue([
+          { speaker: "系統", text: "墨斑還在擴散一點點。先去問清楚——再決定怎麼收。" },
+          { speaker: "梁子安", text: "阿傑……許曼。" },
+        ]);
+        return;
+      }
+      flags.photoKept = true;
+      refreshFlagsHud();
+      updateObjective();
+      rebuildPrompts();
+      showDialogue([
+        { speaker: "梁子安", text: "相紙收回內袋。貼着石灰傷那一側——疼，但記得住。" },
+        { speaker: "系統", text: "你收好了那張壞軌的證據。常識會繼續說中暑；照片不會。" },
+      ]);
+      return;
+    }
+    showDialogue([
+      { speaker: "系統", text: "相紙在內袋。墨斑沒有退——也沒有再長。" },
+    ]);
+  }
+
+  function interactAjie() {
+    if (!flags.photoBlot) {
+      showDialogue([
+        { speaker: "阿傑", text: "靠岸了。腿還軟……你相紙還在吧？" },
+        { speaker: "梁子安", text: "我先看一眼。" },
+      ]);
+      return;
+    }
+    if (!flags.askedAjie) {
+      flags.askedAjie = true;
+      refreshFlagsHud();
+      updateObjective();
+      rebuildPrompts();
+      showDialogue([
+        { speaker: "梁子安", text: "阿傑——周朗呢？" },
+        { speaker: "阿傑", text: "……周朗？" },
+        { speaker: "阿傑", text: "（皺眉，像在撈一個空殼）我們……船上就幾個人啊？你中暑了嗎？" },
+        { speaker: "梁子安", text: "他斷後。拉鐵門。你明明——" },
+        { speaker: "阿傑", text: "官方廣播說有人中暑被送岸。我記得的只有這個。子安，你別嚇我。" },
+        { speaker: "系統", text: "他的眼睛是真的困惑。遺忘像一層乾淨的膜。" },
+      ]);
+      return;
+    }
+    showDialogue([
+      { speaker: "阿傑", text: "別再說那個名字了。我頭痛。" },
+      { speaker: "梁子安", text: "……好。你先坐。" },
+    ]);
+  }
+
+  function interactXuman() {
+    if (!flags.photoBlot) {
+      showDialogue([
+        { speaker: "許曼", text: "霧散了。袖口還扣着。你……先看相紙。" },
+      ]);
+      return;
+    }
+    if (!flags.askedAjie) {
+      showDialogue([
+        { speaker: "許曼", text: "阿傑那邊神色不對。你先問他。" },
+      ]);
+      return;
+    }
+    if (!flags.xumanConfirm) {
+      flags.xumanConfirm = true;
+      refreshFlagsHud();
+      updateObjective();
+      rebuildPrompts();
+      showDialogue([
+        { speaker: "梁子安", text: "許曼。相紙上的墨斑——周朗。阿傑不記得了。" },
+        { speaker: "許曼", text: "我記得。周朗確實引開了那些東西。鐵門那邊……是他。" },
+        { speaker: "許曼", text: "常識會改口。我們不要跟着改。" },
+        { speaker: "梁子安", text: "我收下相紙。" },
+      ]);
+      // Soft auto-hint to keep photo next
+      pendingDialogueEnd = function () {
+        if (!flags.photoKept) {
+          updateObjective();
+        }
+      };
+      return;
+    }
+    showDialogue([
+      { speaker: "許曼", text: "明天。白石中學後巷——廢棄空地。我跟你去。" },
+      { speaker: "梁子安", text: "好。" },
+    ]);
+    if (!flags.heardGoal) {
+      flags.heardGoal = true;
+      refreshFlagsHud();
+      updateObjective();
+      rebuildPrompts();
+    }
+  }
+
+  function interactNotice() {
+    flags.heardGoal = true;
+    refreshFlagsHud();
+    updateObjective();
+    rebuildPrompts();
+    showDialogue([
+      { speaker: "系統", text: "港口告示被海風掀起一角。背面被人用鉛筆寫了一行——字跡像你自己，又不完全是。" },
+      { speaker: "系統", text: "「明天 · 白石中學後巷 · 廢棄空地」" },
+      { speaker: "梁子安", text: "入口提示。卷二……從那裡開始。" },
+    ]);
+  }
+
+  function interactGangway() {
+    if (!chainDone()) {
+      const missing = [];
+      if (!flags.photoBlot) missing.push("看拍立得");
+      if (!flags.askedAjie) missing.push("問阿傑");
+      if (!flags.xumanConfirm) missing.push("許曼確認");
+      if (!flags.photoKept) missing.push("收好相紙");
+      if (!flags.heardGoal) missing.push("確認白石中學目標");
+      showDialogue([
+        { speaker: "系統", text: "舷梯通向碼頭燈火。還有事沒做完：" + missing.join("、") + "。" },
+      ]);
+      return;
+    }
+    showDialogue([
+      { speaker: "系統", text: "你踏上舷梯。岸上廣播餘音還在說中暑與疏散——像一條壞掉的軌道，反覆播正確的謊。" },
+      { speaker: "梁子安", text: "相紙在。名字在。明天，白石中學後巷。" },
+      { speaker: "許曼", text: "走吧。" },
+      { speaker: "系統", text: "通關：拍立得墨斑 · 遺忘與中暑說法 · 許曼確認 · 相紙收妥 · 卷二入口提示。" },
+    ]);
+    pendingDialogueEnd = function () {
+      flags.cleared = true;
+      endcard.style.display = "flex";
+      refreshFlagsHud();
+      updateObjective();
+    };
+  }
+
+  window.addEventListener("keydown", function (e) {
+    const k = e.key.toLowerCase();
+    keys[k] = true;
+    if (["arrowup","arrowdown","arrowleft","arrowright"," "].indexOf(k) >= 0 || e.key === " ") {
+      e.preventDefault();
+    }
+    if (!gameStarted) return;
+    if (e.key === " " || k === "e" || k === "enter") {
+      if (inDialogue) {
+        e.preventDefault();
+        advanceDialogue();
+      } else if (endcard.style.display !== "flex") {
+        e.preventDefault();
+        tryInteract();
+      }
+    }
+  });
+  window.addEventListener("keyup", function (e) {
+    keys[e.key.toLowerCase()] = false;
+  });
+
+  startBtn.addEventListener("click", function () {
+    titleScreen.style.display = "none";
+    gameStarted = true;
+    buildDock();
+    showDialogue([
+      { speaker: "系統", text: "船靠岸了。客艙門口的空氣變乾、變普通——普通得幾乎像羞辱。" },
+      { speaker: "梁子安", text: "（摸內袋）拍立得……先看。" },
+    ]);
+  });
+
+  function tryInteract() {
+    if (!nearby) return;
+    nearby.action();
+  }
+
+  function findNearby() {
+    let best = null, bestD = Infinity;
+    for (const it of interactables) {
+      const d = dist(player.x, player.y, it.x, it.y);
+      if (d < it.r && d < bestD) {
+        best = it;
+        bestD = d;
+      }
+    }
+    return best;
+  }
+
+  function update(dt) {
+    if (!gameStarted) return;
+    animT += dt;
+    fogPulse = 0.5 + Math.sin(animT * 0.6) * 0.5;
+
+    if (inDialogue || endcard.style.display === "flex") {
+      nearby = null;
+      promptEl.style.display = "none";
+      return;
+    }
+
+    let mx = 0, my = 0;
+    if (keys["w"] || keys["arrowup"]) my -= 1;
+    if (keys["s"] || keys["arrowdown"]) my += 1;
+    if (keys["a"] || keys["arrowleft"]) mx -= 1;
+    if (keys["d"] || keys["arrowright"]) mx += 1;
+    if (mx || my) {
+      const len = Math.sqrt(mx * mx + my * my);
+      mx /= len; my /= len;
+      const spd = SPEED * 0.95;
+      const nx = player.x + mx * spd * dt;
+      const ny = player.y + my * spd * dt;
+      if (!blocked(nx, player.y)) player.x = nx;
+      if (!blocked(player.x, ny)) player.y = ny;
+    }
+
+    for (const it of interactables) {
+      if (it.id === "ajie") { it.x = ajie.x; it.y = ajie.y; }
+      if (it.id === "xuman") { it.x = xuman.x; it.y = xuman.y; }
+    }
+
+    nearby = findNearby();
+    if (nearby) {
+      promptText.textContent = nearby.prompt;
+      const rect = canvas.getBoundingClientRect();
+      const stage = document.getElementById("stage").getBoundingClientRect();
+      const sx = (nearby.x / W) * rect.width + (rect.left - stage.left);
+      const sy = (nearby.y / H) * rect.height + (rect.top - stage.top) - 20;
+      promptEl.style.left = sx + "px";
+      promptEl.style.top = sy + "px";
+      promptEl.style.display = "block";
+    } else {
+      promptEl.style.display = "none";
+    }
+  }
+
+  function drawPerson(x, y, name, color, isPlayer, wounded) {
+    ctx.fillStyle = "rgba(0,0,0,0.35)";
+    ctx.beginPath();
+    ctx.ellipse(x, y + 14, 14, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(x, y, isPlayer ? 14 : 13, 0, Math.PI * 2);
+    ctx.fill();
+    if (wounded) {
+      ctx.fillStyle = "rgba(200,210,180," + (0.55 + Math.sin(animT * 4) * 0.2) + ")";
+      ctx.beginPath();
+      ctx.ellipse(x + 10, y + 2, 4, 6, 0.3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.fillStyle = isPlayer ? "#1a1814" : "#1a1a1a";
+    ctx.beginPath();
+    ctx.arc(x, y, 6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = isPlayer ? "#e8e0d4" : "rgba(200,190,170,0.85)";
+    ctx.font = "12px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(name, x, y - 20);
+  }
+
+  function draw() {
+    ctx.save();
+    ctx.fillStyle = theme.floor;
+    ctx.fillRect(0, 0, W, H);
+
+    ctx.strokeStyle = "rgba(255,255,255,0.025)";
+    ctx.lineWidth = 1;
+    for (let x = 0; x < W; x += TILE) {
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+    }
+    for (let y = 0; y < H; y += TILE) {
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+    }
+
+    // Cabin doorway
+    ctx.fillStyle = "#1a1816";
+    ctx.fillRect(560, 120, 160, 160);
+    ctx.strokeStyle = "rgba(196,165,116,0.4)";
+    ctx.strokeRect(560, 120, 160, 160);
+    ctx.fillStyle = "#c4a574";
+    ctx.font = "13px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("客艙門口", 640, 110);
+
+    // Gangway zone
+    ctx.fillStyle = "rgba(196,165,116,0.07)";
+    ctx.fillRect(GANGWAY.x, GANGWAY.y, GANGWAY.w, GANGWAY.h);
+    ctx.strokeStyle = chainDone()
+      ? "rgba(196,165,116," + (0.45 + Math.sin(animT * 3) * 0.2) + ")"
+      : "rgba(196,165,116,0.3)";
+    ctx.setLineDash([6, 4]);
+    ctx.strokeRect(GANGWAY.x, GANGWAY.y, GANGWAY.w, GANGWAY.h);
+    ctx.setLineDash([]);
+    for (let i = 0; i < 5; i++) {
+      const sx = GANGWAY.x + 30 + i * 28;
+      ctx.strokeStyle = "rgba(180,160,120,0.25)";
+      ctx.beginPath();
+      ctx.moveTo(sx, GANGWAY.y + 20);
+      ctx.lineTo(sx, GANGWAY.y + GANGWAY.h - 20);
+      ctx.stroke();
+    }
+    ctx.fillStyle = "#c4a574";
+    ctx.fillText("舷梯 · 靠岸", GANGWAY.x + GANGWAY.w / 2, GANGWAY.y + 24);
+
+    // Solids
+    for (const s of solids) {
+      if (s.label === "wall") ctx.fillStyle = theme.wall;
+      else ctx.fillStyle = s.color || theme.accent;
+      ctx.fillRect(s.x, s.y, s.w, s.h);
+      ctx.strokeStyle = "rgba(0,0,0,0.35)";
+      ctx.strokeRect(s.x + 0.5, s.y + 0.5, s.w - 1, s.h - 1);
+    }
+    ctx.fillStyle = "rgba(200,190,170,0.4)";
+    ctx.font = "12px sans-serif";
+    ctx.fillText("長椅", 240, 530);
+
+    // Notice board
+    ctx.fillStyle = "#3a3428";
+    ctx.fillRect(NOTICE.x - 28, NOTICE.y - 36, 56, 70);
+    ctx.fillStyle = "#e8e0d0";
+    ctx.fillRect(NOTICE.x - 22, NOTICE.y - 28, 44, 50);
+    ctx.fillStyle = flags.heardGoal ? "#8a5040" : "#4a4030";
+    ctx.font = "11px sans-serif";
+    ctx.fillText("告示", NOTICE.x, NOTICE.y + 40);
+
+    // Polaroid on crate
+    ctx.fillStyle = "#4a4030";
+    ctx.fillRect(PHOTO.x - 40, PHOTO.y + 10, 80, 36);
+    ctx.fillStyle = "#e8e4dc";
+    ctx.fillRect(PHOTO.x - 18, PHOTO.y - 28, 36, 42);
+    ctx.fillStyle = flags.photoBlot ? "#1a1010" : "#2a3038";
+    ctx.fillRect(PHOTO.x - 14, PHOTO.y - 24, 28, 24);
+    if (flags.photoBlot) {
+      // ink blot
+      ctx.fillStyle = "rgba(20,10,10,0.9)";
+      ctx.beginPath();
+      ctx.ellipse(PHOTO.x + 2, PHOTO.y - 12, 8 + Math.sin(animT) * 1, 6, 0.2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "rgba(80,40,40,0.5)";
+      ctx.beginPath();
+      ctx.arc(PHOTO.x - 4, PHOTO.y - 8, 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.fillStyle = "#c4a574";
+    ctx.font = "11px sans-serif";
+    ctx.fillText(flags.photoKept ? "相（已收）" : "拍立得", PHOTO.x, PHOTO.y + 60);
+
+    drawPerson(ajie.x, ajie.y, "阿傑", "#6a8a70");
+    drawPerson(xuman.x, xuman.y, "許曼", "#8a6a80");
+    drawPerson(player.x, player.y, "梁子安", "#c4a574", true, true);
+
+    // Light clear fog — shore morning
+    const fogA = 0.12 + fogPulse * 0.05;
+    ctx.fillStyle = "rgba(50,48,44," + fogA + ")";
+    ctx.fillRect(0, 0, W, H);
+
+    const g = ctx.createRadialGradient(player.x, player.y, 90, player.x, player.y, 480);
+    g.addColorStop(0, "rgba(0,0,0,0)");
+    g.addColorStop(1, "rgba(8,6,4,0.55)");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+
+    ctx.restore();
+  }
+
+  function loop(ts) {
+    if (!lastTs) lastTs = ts;
+    const dt = Math.min(0.05, (ts - lastTs) / 1000);
+    lastTs = ts;
+    update(dt);
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  refreshFlagsHud();
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
