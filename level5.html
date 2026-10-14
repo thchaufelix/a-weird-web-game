@@ -724,7 +724,7 @@
       // Sway intensity 0..1 — high sway slows / reverses progress
       const sway = Math.abs(Math.sin(swayPhase * 1.35));
       const aligned = sway < 0.42; // green window
-      let rate = aligned ? 0.38 : -0.22;
+      let rate = aligned ? 0.55 : -0.12;
       // Extra difficulty: higher progress → slightly harder
       if (aligned) rate *= (1 - linkProgress * 0.15);
       linkProgress = Math.max(0, Math.min(1, linkProgress + rate * dt));
