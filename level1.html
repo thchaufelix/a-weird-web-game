@@ -1,0 +1,1137 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>無菌室 · 第1關：鐵鏽與舊航線</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    width: 100%; height: 100%;
+    background: #0a0a0c;
+    color: #e8e4dc;
+    font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", "Heiti TC", sans-serif;
+    overflow: hidden;
+    user-select: none;
+  }
+  #wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100%;
+    padding: 12px;
+    gap: 8px;
+  }
+  #titlebar {
+    width: min(1280px, 100%);
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 0 4px;
+    font-size: 13px;
+    letter-spacing: 0.08em;
+    color: #9a958c;
+  }
+  #titlebar strong { color: #d4cfc4; font-weight: 600; }
+  #stage {
+    position: relative;
+    width: min(1280px, 100%);
+    height: min(720px, calc(100vh - 120px));
+    max-height: 720px;
+    background: #111;
+    border: 1px solid #2a2a30;
+    box-shadow: 0 0 40px rgba(0,0,0,0.6);
+    overflow: hidden;
+  }
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    image-rendering: pixelated;
+  }
+  #hud {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+  #objective {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    max-width: 360px;
+    padding: 10px 14px;
+    background: rgba(8,8,12,0.78);
+    border-left: 3px solid #c4a574;
+    font-size: 14px;
+    line-height: 1.45;
+    color: #e0d8cc;
+  }
+  #objective .label {
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    color: #c4a574;
+    margin-bottom: 4px;
+  }
+  #flags-hud {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    padding: 8px 12px;
+    background: rgba(8,8,12,0.72);
+    border: 1px solid #2a2a30;
+    font-size: 11px;
+    line-height: 1.6;
+    color: #7a756c;
+    letter-spacing: 0.04em;
+  }
+  #flags-hud .ok { color: #c4a574; }
+  #prompt {
+    position: absolute;
+    padding: 6px 12px;
+    background: rgba(12,12,16,0.9);
+    border: 1px solid #c4a574;
+    color: #f0e8d8;
+    font-size: 13px;
+    white-space: nowrap;
+    transform: translate(-50%, -100%);
+    display: none;
+    pointer-events: none;
+  }
+  #prompt kbd {
+    display: inline-block;
+    padding: 1px 6px;
+    margin-right: 4px;
+    border: 1px solid #c4a574;
+    border-radius: 3px;
+    font-size: 11px;
+    font-family: inherit;
+    color: #c4a574;
+  }
+  #dialogue {
+    position: absolute;
+    left: 24px; right: 24px; bottom: 20px;
+    min-height: 110px;
+    padding: 18px 22px 16px;
+    background: rgba(6,6,10,0.92);
+    border: 1px solid #3a3832;
+    border-top: 2px solid #c4a574;
+    display: none;
+    pointer-events: auto;
+  }
+  #dialogue .speaker {
+    font-size: 13px;
+    color: #c4a574;
+    letter-spacing: 0.1em;
+    margin-bottom: 8px;
+  }
+  #dialogue .text {
+    font-size: 16px;
+    line-height: 1.55;
+    color: #efe9df;
+    min-height: 48px;
+  }
+  #dialogue .hint {
+    margin-top: 10px;
+    font-size: 12px;
+    color: #7a756c;
+    text-align: right;
+  }
+  #endcard {
+    position: absolute;
+    inset: 0;
+    background: rgba(4,4,8,0.94);
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    pointer-events: auto;
+    text-align: center;
+    padding: 40px;
+  }
+  #endcard h1 {
+    font-size: 28px;
+    font-weight: 500;
+    letter-spacing: 0.15em;
+    color: #e8e0d4;
+  }
+  #endcard p {
+    font-size: 15px;
+    color: #9a958c;
+    line-height: 1.7;
+    max-width: 420px;
+  }
+  #endcard .seal {
+    margin-top: 12px;
+    font-size: 12px;
+    letter-spacing: 0.2em;
+    color: #c4a574;
+  }
+  #endcard a.continue {
+    margin-top: 8px;
+    padding: 12px 36px;
+    border: 1px solid #c4a574;
+    color: #c4a574;
+    text-decoration: none;
+    font-size: 14px;
+    letter-spacing: 0.15em;
+  }
+  #endcard a.continue:hover {
+    background: rgba(196,165,116,0.12);
+  }
+  #controls-hint {
+    width: min(1280px, 100%);
+    font-size: 12px;
+    color: #5a564e;
+    text-align: center;
+    letter-spacing: 0.04em;
+  }
+  #title-screen {
+    position: absolute;
+    inset: 0;
+    background: #0c0c10;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    z-index: 20;
+    pointer-events: auto;
+  }
+  #title-screen h1 {
+    font-size: 36px;
+    font-weight: 400;
+    letter-spacing: 0.35em;
+    color: #e8e0d4;
+  }
+  #title-screen .sub {
+    font-size: 14px;
+    color: #8a857a;
+    letter-spacing: 0.2em;
+  }
+  #title-screen button {
+    margin-top: 24px;
+    padding: 12px 36px;
+    background: transparent;
+    border: 1px solid #c4a574;
+    color: #c4a574;
+    font-size: 15px;
+    font-family: inherit;
+    letter-spacing: 0.2em;
+    cursor: pointer;
+  }
+  #title-screen button:hover {
+    background: rgba(196,165,116,0.12);
+  }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="titlebar">
+    <span><strong>無菌室</strong> · 第1關：鐵鏽與舊航線</span>
+    <span id="scene-label">—</span>
+  </div>
+  <div id="stage">
+    <canvas id="cv" width="1280" height="720"></canvas>
+    <div id="hud">
+      <div id="objective"><div class="label">目標</div><div id="obj-text">—</div></div>
+      <div id="flags-hud"></div>
+      <div id="prompt"><kbd>E</kbd><span id="prompt-text">互動</span></div>
+    </div>
+    <div id="dialogue">
+      <div class="speaker" id="dlg-speaker"></div>
+      <div class="text" id="dlg-text"></div>
+      <div class="hint">按 E / Space / Enter 繼續</div>
+    </div>
+    <div id="endcard">
+      <h1>汽笛聲遠了。岸，漸漸小下去。</h1>
+      <p>第1關結束。<br/>下一章：第2關｜起霧與失控</p>
+      <div class="seal">— 無菌室 · 第一卷 · 鐵鏽與舊航線 —</div>
+      <a class="continue" href="level2.html">進入第2關</a>
+      <a class="continue" href="prologue.html" style="margin-top:4px;opacity:0.7">回序章</a>
+    </div>
+    <div id="title-screen">
+      <h1>無菌室</h1>
+      <div class="sub">第1關：鐵鏽與舊航線</div>
+      <div class="sub" style="margin-top:8px;letter-spacing:0.08em;font-size:12px;color:#5a564e">舊區碼頭 · 班次 F-704 · 14:15</div>
+      <button id="start-btn">開始</button>
+    </div>
+  </div>
+  <div id="controls-hint">移動 WASD / 方向鍵　互動 E / Space　對話繼續 E / Space / Enter</div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  const W = 1280, H = 720;
+  const TILE = 40;
+  const PLAYER_SIZE = 28;
+  const SPEED = 180;
+
+  const canvas = document.getElementById("cv");
+  const ctx = canvas.getContext("2d");
+  const objText = document.getElementById("obj-text");
+  const sceneLabel = document.getElementById("scene-label");
+  const flagsHud = document.getElementById("flags-hud");
+  const promptEl = document.getElementById("prompt");
+  const promptText = document.getElementById("prompt-text");
+  const dialogueEl = document.getElementById("dialogue");
+  const dlgSpeaker = document.getElementById("dlg-speaker");
+  const dlgText = document.getElementById("dlg-text");
+  const endcard = document.getElementById("endcard");
+  const titleScreen = document.getElementById("title-screen");
+  const startBtn = document.getElementById("start-btn");
+
+  const flags = {
+    ticketOk: false,
+    metAjie: false,
+    metXuman: false,
+    metZhou: false,
+    seenRust: false,
+    gotPhoto: false,
+    cleared: false,
+  };
+
+  let sceneId = "pier";
+  let player = { x: 200, y: 400, vx: 0, vy: 0 };
+  let keys = {};
+  let interactables = [];
+  let solids = [];
+  let nearby = null;
+  let dialogueQueue = [];
+  let inDialogue = false;
+  let gameStarted = false;
+  let lastTs = 0;
+  let animT = 0;
+  let pendingDialogueEnd = null;
+  let whistlePlaying = false;
+
+  const themes = {
+    pier:    { floor: "#1e2228", wall: "#3a424c", accent: "#4a5460", fog: "rgba(30,40,50,0.14)" },
+    gangway: { floor: "#2a2420", wall: "#4a3a30", accent: "#5c4838", fog: "rgba(50,30,20,0.16)" },
+    deck:    { floor: "#243038", wall: "#3a4850", accent: "#4a5860", fog: "rgba(20,35,45,0.18)" },
+  };
+
+  function setObjective(t) { objText.textContent = t; }
+  function setSceneLabel(t) { sceneLabel.textContent = t; }
+
+  function allMet() {
+    return flags.metAjie && flags.metXuman && flags.metZhou;
+  }
+
+  function canBoard() {
+    return flags.ticketOk && allMet();
+  }
+
+  function canClear() {
+    return flags.ticketOk && allMet() && flags.gotPhoto;
+  }
+
+  function refreshFlagsHud() {
+    function mark(ok, label) {
+      return '<span class="' + (ok ? "ok" : "") + '">' + (ok ? "✓" : "·") + " " + label + "</span>";
+    }
+    flagsHud.innerHTML = [
+      mark(flags.ticketOk, "船票 F-704"),
+      mark(flags.metAjie, "阿傑"),
+      mark(flags.metXuman, "許曼"),
+      mark(flags.metZhou, "周朗"),
+      mark(flags.gotPhoto, "拍立得"),
+    ].join("<br/>");
+  }
+
+  function showDialogue(lines) {
+    dialogueQueue = lines.slice();
+    inDialogue = true;
+    advanceDialogue();
+  }
+
+  function advanceDialogue() {
+    if (dialogueQueue.length === 0) {
+      dialogueEl.style.display = "none";
+      inDialogue = false;
+      onDialogueEnd();
+      return;
+    }
+    const line = dialogueQueue.shift();
+    dlgSpeaker.textContent = line.speaker || "";
+    dlgText.textContent = line.text;
+    dialogueEl.style.display = "block";
+  }
+
+  function onDialogueEnd() {
+    if (pendingDialogueEnd) {
+      const fn = pendingDialogueEnd;
+      pendingDialogueEnd = null;
+      fn();
+    }
+    updateObjective();
+    refreshFlagsHud();
+  }
+
+  function updateObjective() {
+    if (flags.cleared) {
+      setObjective("—");
+      return;
+    }
+    if (sceneId === "pier") {
+      if (!flags.ticketOk) setObjective("到售票亭核對船票：班次 F-704、14:15。");
+      else if (!allMet()) setObjective("會合同伴：阿傑、許曼、周朗。");
+      else setObjective("從右側舷梯登船。");
+    } else if (sceneId === "gangway") {
+      if (!flags.seenRust) setObjective("留意舷梯扶手——有什麼不對勁。");
+      else setObjective("繼續上行，登上二層露天甲板。");
+    } else if (sceneId === "deck") {
+      if (!flags.gotPhoto) setObjective("找阿傑——他想用拍立得留影。");
+      else setObjective("走到船舷欄杆邊，準備離岸。");
+    }
+  }
+
+  function rectsOverlap(a, b) {
+    return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+  }
+
+  function playerRect(px, py) {
+    return { x: px - PLAYER_SIZE / 2, y: py - PLAYER_SIZE / 2, w: PLAYER_SIZE, h: PLAYER_SIZE };
+  }
+
+  function blocked(px, py) {
+    const pr = playerRect(px, py);
+    for (const s of solids) {
+      if (rectsOverlap(pr, s)) return true;
+    }
+    if (px < 30 || px > W - 30 || py < 30 || py > H - 30) return true;
+    return false;
+  }
+
+  function dist(ax, ay, bx, by) {
+    const dx = ax - bx, dy = ay - by;
+    return Math.sqrt(dx * dx + dy * dy);
+  }
+
+  // ——— Scene: 舊區碼頭 ———
+  function buildPier() {
+    sceneId = "pier";
+    setSceneLabel("舊區碼頭");
+    player = { x: 160, y: 480, vx: 0, vy: 0 };
+    solids = [];
+    interactables = [];
+
+    solids.push({ x: 0, y: 0, w: W, h: 48, label: "wall" });
+    solids.push({ x: 0, y: H - 48, w: W, h: 48, label: "wall" });
+    solids.push({ x: 0, y: 0, w: 48, h: H, label: "wall" });
+    solids.push({ x: W - 48, y: 0, w: 48, h: H, label: "wall" });
+
+    // Water edge (visual barrier along top-ish mid)
+    solids.push({ x: 48, y: 48, w: W - 96, h: 36, label: "railing", color: "#2a3038" });
+
+    // Ticket booth
+    solids.push({ x: 100, y: 200, w: 160, h: 120, label: "booth", color: "#3a4048" });
+    solids.push({ x: 120, y: 180, w: 120, h: 30, label: "awning", color: "#5a4030" });
+
+    // Crates / bollards
+    solids.push({ x: 360, y: 520, w: 70, h: 70, label: "crate", color: "#4a3a28" });
+    solids.push({ x: 450, y: 540, w: 55, h: 55, label: "crate", color: "#3a3020" });
+    solids.push({ x: 900, y: 200, w: 40, h: 40, label: "bollard", color: "#5a5860" });
+    solids.push({ x: 980, y: 200, w: 40, h: 40, label: "bollard", color: "#5a5860" });
+
+    // Gangway mouth solid framing (right side opening)
+    solids.push({ x: W - 48, y: 48, w: 48, h: 220, label: "wall" });
+    solids.push({ x: W - 48, y: 480, w: 48, h: H - 528, label: "wall" });
+
+    // Ticket interact
+    interactables.push({
+      id: "ticket",
+      x: 180, y: 280, r: 70,
+      label: "船票",
+      prompt: flags.ticketOk ? "船票（已核對）" : "核對船票",
+      action: interactTicket,
+    });
+
+    // NPCs — spaced so player can approach each
+    interactables.push({
+      id: "ajie",
+      x: 520, y: 340, r: 60,
+      label: "阿傑",
+      prompt: "與阿傑打招呼",
+      action: interactAjie,
+      isNpc: true,
+      color: "#6a8a70",
+    });
+    interactables.push({
+      id: "xuman",
+      x: 700, y: 420, r: 60,
+      label: "許曼",
+      prompt: "與許曼交談",
+      action: interactXuman,
+      isNpc: true,
+      color: "#8a6a80",
+    });
+    interactables.push({
+      id: "zhou",
+      x: 880, y: 360, r: 60,
+      label: "周朗",
+      prompt: "與周朗交談",
+      action: interactZhou,
+      isNpc: true,
+      color: "#6a7a90",
+    });
+
+    interactables.push({
+      id: "board",
+      x: W - 70, y: H / 2 + 20, r: 60,
+      label: "舷梯",
+      prompt: "登上舷梯",
+      action: tryBoard,
+      isExit: true,
+    });
+
+    updateObjective();
+    refreshFlagsHud();
+  }
+
+  // ——— Scene: 登船舷梯 ———
+  function buildGangway() {
+    sceneId = "gangway";
+    setSceneLabel("登船舷梯");
+    // Central corridor ~y 300–460 clear for walking
+    player = { x: 120, y: 380, vx: 0, vy: 0 };
+    solids = [];
+    interactables = [];
+
+    solids.push({ x: 0, y: 0, w: W, h: 48, label: "wall" });
+    solids.push({ x: 0, y: H - 48, w: W, h: 48, label: "wall" });
+    solids.push({ x: 0, y: 0, w: 48, h: H, label: "wall" });
+    solids.push({ x: W - 48, y: 0, w: 48, h: H, label: "wall" });
+
+    // Hull flanks — leave a mid corridor (~y 280–470) open across the stage
+    solids.push({ x: 48, y: 48, w: 400, h: 200, label: "hull", color: "#3a3028" });
+    solids.push({ x: 48, y: 500, w: 400, h: 172, label: "hull", color: "#3a3028" });
+    solids.push({ x: 520, y: 48, w: 360, h: 180, label: "hull", color: "#3a3028" });
+    solids.push({ x: 520, y: 520, w: 360, h: 152, label: "hull", color: "#3a3028" });
+    solids.push({ x: 960, y: 48, w: 272, h: 200, label: "hull", color: "#3a3028" });
+    solids.push({ x: 960, y: 500, w: 272, h: 172, label: "hull", color: "#3a3028" });
+
+    // Handrail posts along north edge of corridor (do not block mid path)
+    solids.push({ x: 340, y: 248, w: 14, h: 40, label: "rail", color: "#5a4838" });
+    solids.push({ x: 420, y: 248, w: 14, h: 40, label: "rail", color: "#5a4838" });
+    solids.push({ x: 800, y: 248, w: 14, h: 40, label: "rail", color: "#5a4838" });
+
+    interactables.push({
+      id: "rust",
+      x: 380, y: 300, r: 70,
+      label: "扶手",
+      prompt: flags.seenRust ? "鏽水（已觀察）" : "查看扶手",
+      action: interactRust,
+      highlight: true,
+    });
+
+    interactables.push({
+      id: "backPier",
+      x: 90, y: 380, r: 55,
+      label: "回碼頭",
+      prompt: "返回碼頭",
+      action: function () {
+        showDialogue([{ speaker: "梁子安", text: "回碼頭一趟。" }]);
+        pendingDialogueEnd = function () {
+          fadeToScene(function () {
+            buildPier();
+            player.x = W - 140;
+            player.y = H / 2 + 20;
+          });
+        };
+      },
+      isExit: true,
+    });
+
+    interactables.push({
+      id: "toDeck",
+      x: W - 90, y: 380, r: 60,
+      label: "甲板",
+      prompt: "登上二層露天甲板",
+      action: tryEnterDeck,
+      isExit: true,
+    });
+
+    updateObjective();
+    refreshFlagsHud();
+  }
+
+  // ——— Scene: 二層露天甲板 ———
+  function buildDeck() {
+    sceneId = "deck";
+    setSceneLabel("二層露天甲板");
+    player = { x: 160, y: 400, vx: 0, vy: 0 };
+    solids = [];
+    interactables = [];
+
+    solids.push({ x: 0, y: 0, w: W, h: 48, label: "wall" });
+    solids.push({ x: 0, y: H - 48, w: W, h: 48, label: "wall" });
+    solids.push({ x: 0, y: 0, w: 48, h: H, label: "wall" });
+    solids.push({ x: W - 48, y: 0, w: 48, h: H, label: "wall" });
+
+    // Deck railing (sea side)
+    solids.push({ x: 48, y: 48, w: W - 96, h: 40, label: "railing", color: "#3a4850" });
+    // Cabin wall
+    solids.push({ x: 48, y: H - 160, w: 400, h: 112, label: "cabin", color: "#2a343c" });
+    solids.push({ x: 520, y: H - 140, w: 280, h: 92, label: "bench", color: "#3a4038" });
+    // Funnel / structure
+    solids.push({ x: 1000, y: 200, w: 120, h: 200, label: "funnel", color: "#4a3a30" });
+    solids.push({ x: 1020, y: 160, w: 80, h: 50, label: "funnelTop", color: "#5a4030" });
+
+    // Ajie on deck for photo
+    interactables.push({
+      id: "ajieDeck",
+      x: 640, y: 320, r: 65,
+      label: "阿傑",
+      prompt: flags.gotPhoto ? "與阿傑交談" : "拍立得留影",
+      action: interactAjiePhoto,
+      isNpc: true,
+      color: "#6a8a70",
+    });
+
+    // Xuman & Zhou present (flavor / already met)
+    interactables.push({
+      id: "xumanDeck",
+      x: 480, y: 480, r: 55,
+      label: "許曼",
+      prompt: "與許曼交談",
+      action: function () {
+        showDialogue([
+          { speaker: "許曼", text: flags.gotPhoto ? "相紙收好。風一吹，影像會糊的。" : "袖口……還是扣緊點。海風大。" },
+          { speaker: "梁子安", text: "嗯。" },
+        ]);
+      },
+      isNpc: true,
+      color: "#8a6a80",
+    });
+    interactables.push({
+      id: "zhouDeck",
+      x: 820, y: 460, r: 55,
+      label: "周朗",
+      prompt: "與周朗交談",
+      action: function () {
+        showDialogue([
+          { speaker: "周朗", text: flags.gotPhoto ? "離岸了就別回頭看碼頭。舊航線最忌猶豫。" : "牙螺絲還鬆着。等下再擰。" },
+        ]);
+      },
+      isNpc: true,
+      color: "#6a7a90",
+    });
+
+    interactables.push({
+      id: "rail",
+      x: 700, y: 120, r: 70,
+      label: "船舷",
+      prompt: canClear() ? "離岸通關" : "望向岸邊",
+      action: interactRail,
+    });
+
+    interactables.push({
+      id: "backGang",
+      x: 80, y: 400, r: 50,
+      label: "舷梯",
+      prompt: "返回舷梯",
+      action: function () {
+        fadeToScene(buildGangway);
+      },
+      isExit: true,
+    });
+
+    updateObjective();
+    refreshFlagsHud();
+  }
+
+  // ——— Interactions ———
+  function interactTicket() {
+    if (flags.ticketOk) {
+      showDialogue([
+        { speaker: "梁子安", text: "船票已打孔。班次 F-704，開船 14:15。紙邊還留着金屬涼意。" },
+      ]);
+      return;
+    }
+    flags.ticketOk = true;
+    const t = interactables.find(function (i) { return i.id === "ticket"; });
+    if (t) t.prompt = "船票（已核對）";
+    showDialogue([
+      { speaker: "售票員", text: "船票給我。班次、時間對一下。" },
+      { speaker: "系統", text: "打孔機咔一聲。紙屑落下。" },
+      { speaker: "梁子安", text: "F-704……14:15。沒錯。" },
+      { speaker: "售票員", text: "過了點就唔等。去會合你那班同學啦。" },
+    ]);
+  }
+
+  function interactAjie() {
+    if (flags.metAjie) {
+      showDialogue([
+        { speaker: "阿傑", text: "拍立得在袋裡。上咗甲板再影——碼頭光線太碎。" },
+      ]);
+      return;
+    }
+    flags.metAjie = true;
+    showDialogue([
+      { speaker: "阿傑", text: "子安！你終於到。我仲以為你又加班。" },
+      { speaker: "梁子安", text: "船票剛核完。F-704。" },
+      { speaker: "阿傑", text: "好。我帶咗部舊拍立得——等登船再影張合照。" },
+    ]);
+  }
+
+  function interactXuman() {
+    if (flags.metXuman) {
+      showDialogue([
+        { speaker: "許曼", text: "袖口扣好了。海風鹹，別讓皮膚受潮。" },
+      ]);
+      return;
+    }
+    flags.metXuman = true;
+    showDialogue([
+      { speaker: "許曼", text: "子安。" },
+      { speaker: "梁子安", text: "袖口……你扣得很緊。" },
+      { speaker: "許曼", text: "習慣。舊區碼頭潮氣重，扣緊點安心。" },
+      { speaker: "系統", text: "她的袖口扣到最末一顆。指節微白。" },
+    ]);
+  }
+
+  function interactZhou() {
+    if (flags.metZhou) {
+      showDialogue([
+        { speaker: "周朗", text: "牙螺絲鬆一格比較舒服。上船再調。" },
+      ]);
+      return;
+    }
+    flags.metZhou = true;
+    showDialogue([
+      { speaker: "周朗", text: "到齊未？" },
+      { speaker: "梁子安", text: "阿傑、許曼都在。你在幹嘛？" },
+      { speaker: "周朗", text: "擰鬆牙螺絲。戴咗一日，顎骨緊。" },
+      { speaker: "系統", text: "他用指腹轉了半圈。金屬輕響，埋進風裡。" },
+    ]);
+  }
+
+  function tryBoard() {
+    if (!flags.ticketOk) {
+      showDialogue([
+        { speaker: "梁子安", text: "船票還沒核對。先去售票亭。" },
+      ]);
+      return;
+    }
+    if (!allMet()) {
+      var missing = [];
+      if (!flags.metAjie) missing.push("阿傑");
+      if (!flags.metXuman) missing.push("許曼");
+      if (!flags.metZhou) missing.push("周朗");
+      showDialogue([
+        { speaker: "梁子安", text: "還有人沒會合：" + missing.join("、") + "。" },
+      ]);
+      return;
+    }
+    showDialogue([
+      { speaker: "梁子安", text: "船票齊、人齊。上舷梯。" },
+    ]);
+    pendingDialogueEnd = function () { fadeToScene(buildGangway); };
+  }
+
+  function interactRust() {
+    if (flags.seenRust) {
+      showDialogue([
+        { speaker: "梁子安", text: "鏽水還在往下滲。黏稠，不像正常的鐵銹。" },
+      ]);
+      return;
+    }
+    flags.seenRust = true;
+    const r = interactables.find(function (i) { return i.id === "rust"; });
+    if (r) r.prompt = "鏽水（已觀察）";
+    showDialogue([
+      { speaker: "系統", text: "扶手涼。指腹按上去，縫隙裡滲出褐色黏液——像鏽，又比鏽稠。" },
+      { speaker: "梁子安", text: "……舊船。銹水會滲。" },
+      { speaker: "梁子安", text: "可它在動。極慢，像呼吸。" },
+      { speaker: "系統", text: "你沒有叫同伴來看。只是擦乾手指，繼續往上走。" },
+    ]);
+  }
+
+  function tryEnterDeck() {
+    if (!flags.seenRust) {
+      showDialogue([
+        { speaker: "梁子安", text: "左手扶手那邊……色澤不對。先看一眼。" },
+      ]);
+      return;
+    }
+    showDialogue([
+      { speaker: "系統", text: "二層露天甲板。風比碼頭乾淨一點——也只是一點。" },
+    ]);
+    pendingDialogueEnd = function () { fadeToScene(buildDeck); };
+  }
+
+  function interactAjiePhoto() {
+    if (flags.gotPhoto) {
+      showDialogue([
+        { speaker: "阿傑", text: "相紙你收好。別摺——影像會裂。" },
+      ]);
+      return;
+    }
+    flags.gotPhoto = true;
+    const a = interactables.find(function (i) { return i.id === "ajieDeck"; });
+    if (a) a.prompt = "與阿傑交談";
+    const rail = interactables.find(function (i) { return i.id === "rail"; });
+    if (rail) rail.prompt = "離岸通關";
+    showDialogue([
+      { speaker: "阿傑", text: "過來，站近啲。許曼、周朗——三、二、一——" },
+      { speaker: "系統", text: "快門。馬達輕響。相紙吐出，白茫茫一片。" },
+      { speaker: "阿傑", text: "拿去。等它顯影……你們幾個，以後未必再齊。" },
+      { speaker: "梁子安", text: "我收好。" },
+      { speaker: "系統", text: "相紙妥進內袋。邊緣還熱。" },
+    ]);
+  }
+
+  function interactRail() {
+    if (!flags.gotPhoto) {
+      showDialogue([
+        { speaker: "梁子安", text: "岸邊吊機還在轉。阿傑說要影相——先去找他。" },
+      ]);
+      return;
+    }
+    if (!canClear()) {
+      showDialogue([
+        { speaker: "梁子安", text: "還有事未了。" },
+      ]);
+      return;
+    }
+    if (whistlePlaying || flags.cleared) return;
+    whistlePlaying = true;
+    showDialogue([
+      { speaker: "系統", text: "汽笛。低沉、漫長——像從鐵板底下擠出來。" },
+      { speaker: "廣播", text: "F-704 離岸。乘客請勿倚靠欄杆外側。" },
+      { speaker: "梁子安", text: "碼頭縮成一條線。舊航線，開了。" },
+      { speaker: "系統", text: "通關核對：船票已打孔 · 同伴已會合 · 拍立得已收妥。" },
+    ]);
+    pendingDialogueEnd = function () {
+      flags.cleared = true;
+      endcard.style.display = "flex";
+      refreshFlagsHud();
+      updateObjective();
+    };
+  }
+
+  // ——— Fade ———
+  let fading = false;
+  let fadeAlpha = 0;
+  let fadeDir = 0;
+  let fadeCallback = null;
+
+  function fadeToScene(builder) {
+    if (fading) return;
+    fading = true;
+    fadeDir = 1;
+    fadeCallback = builder;
+  }
+
+  function updateFade(dt) {
+    if (!fading) return;
+    fadeAlpha += fadeDir * dt * 2.5;
+    if (fadeDir > 0 && fadeAlpha >= 1) {
+      fadeAlpha = 1;
+      if (fadeCallback) {
+        fadeCallback();
+        fadeCallback = null;
+      }
+      fadeDir = -1;
+    } else if (fadeDir < 0 && fadeAlpha <= 0) {
+      fadeAlpha = 0;
+      fading = false;
+      fadeDir = 0;
+    }
+  }
+
+  // ——— Input ———
+  window.addEventListener("keydown", function (e) {
+    const k = e.key.toLowerCase();
+    keys[k] = true;
+    if (["arrowup","arrowdown","arrowleft","arrowright"," "].indexOf(e.key.toLowerCase()) >= 0 ||
+        e.key === " ") {
+      e.preventDefault();
+    }
+    if (!gameStarted) return;
+    if (e.key === " " || k === "e" || k === "enter") {
+      if (inDialogue) {
+        e.preventDefault();
+        advanceDialogue();
+      } else if (!fading && endcard.style.display !== "flex") {
+        e.preventDefault();
+        tryInteract();
+      }
+    }
+  });
+  window.addEventListener("keyup", function (e) {
+    keys[e.key.toLowerCase()] = false;
+  });
+
+  startBtn.addEventListener("click", function () {
+    titleScreen.style.display = "none";
+    gameStarted = true;
+    buildPier();
+    showDialogue([
+      { speaker: "系統", text: "舊區碼頭。潮水拍着樁柱，鏽味混着柴油。" },
+      { speaker: "梁子安", text: "週六。F-704。先核船票，再找人。" },
+    ]);
+  });
+
+  function tryInteract() {
+    if (!nearby) return;
+    nearby.action();
+  }
+
+  function findNearby() {
+    let best = null, bestD = Infinity;
+    for (const it of interactables) {
+      const d = dist(player.x, player.y, it.x, it.y);
+      if (d < it.r && d < bestD) {
+        best = it;
+        bestD = d;
+      }
+    }
+    return best;
+  }
+
+  // ——— Update / Draw ———
+  function update(dt) {
+    if (!gameStarted) return;
+    updateFade(dt);
+    animT += dt;
+
+    if (inDialogue || fading || endcard.style.display === "flex") {
+      nearby = null;
+      promptEl.style.display = "none";
+      return;
+    }
+
+    let mx = 0, my = 0;
+    if (keys["w"] || keys["arrowup"]) my -= 1;
+    if (keys["s"] || keys["arrowdown"]) my += 1;
+    if (keys["a"] || keys["arrowleft"]) mx -= 1;
+    if (keys["d"] || keys["arrowright"]) mx += 1;
+    if (mx !== 0 || my !== 0) {
+      const len = Math.sqrt(mx * mx + my * my);
+      mx /= len; my /= len;
+      const nx = player.x + mx * SPEED * dt;
+      const ny = player.y + my * SPEED * dt;
+      if (!blocked(nx, player.y)) player.x = nx;
+      if (!blocked(player.x, ny)) player.y = ny;
+    }
+
+    nearby = findNearby();
+    if (nearby) {
+      promptText.textContent = nearby.prompt;
+      const rect = canvas.getBoundingClientRect();
+      const stage = document.getElementById("stage").getBoundingClientRect();
+      const sx = (nearby.x / W) * rect.width + (rect.left - stage.left);
+      const sy = (nearby.y / H) * rect.height + (rect.top - stage.top) - 20;
+      promptEl.style.left = sx + "px";
+      promptEl.style.top = sy + "px";
+      promptEl.style.display = "block";
+    } else {
+      promptEl.style.display = "none";
+    }
+  }
+
+  function draw() {
+    const theme = themes[sceneId] || themes.pier;
+    ctx.fillStyle = theme.floor;
+    ctx.fillRect(0, 0, W, H);
+
+    // Floor / plank pattern
+    ctx.strokeStyle = "rgba(255,255,255,0.03)";
+    ctx.lineWidth = 1;
+    for (let x = 0; x < W; x += TILE) {
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+    }
+    for (let y = 0; y < H; y += TILE) {
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+    }
+
+    if (sceneId === "pier") {
+      // Water band
+      ctx.fillStyle = "#1a2830";
+      ctx.fillRect(48, 48, W - 96, 90);
+      ctx.fillStyle = "rgba(80,140,160,0.15)";
+      for (let i = 0; i < 8; i++) {
+        const wx = 80 + i * 140 + Math.sin(animT + i) * 8;
+        ctx.fillRect(wx, 70 + (i % 3) * 12, 60, 4);
+      }
+    }
+
+    if (sceneId === "deck") {
+      // Sea beyond railing
+      ctx.fillStyle = "#152028";
+      ctx.fillRect(48, 48, W - 96, 50);
+      ctx.fillStyle = "rgba(100,160,180,0.12)";
+      ctx.fillRect(48, 55, W - 96, 8);
+    }
+
+    for (const s of solids) {
+      if (s.label === "wall") {
+        ctx.fillStyle = theme.wall;
+      } else {
+        ctx.fillStyle = s.color || theme.accent;
+      }
+      ctx.fillRect(s.x, s.y, s.w, s.h);
+      ctx.strokeStyle = "rgba(0,0,0,0.35)";
+      ctx.strokeRect(s.x + 0.5, s.y + 0.5, s.w - 1, s.h - 1);
+    }
+
+    ctx.font = "12px sans-serif";
+    ctx.fillStyle = "rgba(200,190,170,0.45)";
+    ctx.textAlign = "center";
+    for (const s of solids) {
+      if (s.label === "booth") ctx.fillText("售票亭", s.x + s.w / 2, s.y + s.h / 2 + 4);
+      else if (s.label === "crate") ctx.fillText("箱", s.x + s.w / 2, s.y + s.h / 2 + 4);
+      else if (s.label === "cabin") ctx.fillText("客艙壁", s.x + s.w / 2, s.y + s.h / 2 + 4);
+      else if (s.label === "bench") ctx.fillText("長椅", s.x + s.w / 2, s.y + s.h / 2 + 4);
+      else if (s.label === "funnel") ctx.fillText("煙囪", s.x + s.w / 2, s.y + s.h / 2 + 4);
+      else if (s.label === "railing") ctx.fillText("欄杆", s.x + s.w / 2, s.y + s.h / 2 + 4);
+    }
+
+    // Scene-specific
+    if (sceneId === "pier") {
+      // Ticket stub visual
+      if (flags.ticketOk) {
+        ctx.fillStyle = "#e8dcc8";
+        ctx.fillRect(155, 250, 44, 28);
+        ctx.fillStyle = "#8a3030";
+        ctx.beginPath();
+        ctx.arc(168, 264, 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#5a4030";
+        ctx.font = "9px sans-serif";
+        ctx.fillText("F-704", 177, 268);
+      } else {
+        ctx.fillStyle = "#d8d0c0";
+        ctx.fillRect(155, 250, 44, 28);
+        ctx.fillStyle = "#5a564e";
+        ctx.font = "9px sans-serif";
+        ctx.fillText("船票", 177, 268);
+      }
+
+      // Door / gangway mark
+      ctx.fillStyle = "#4a4030";
+      ctx.fillRect(W - 48, H / 2 - 40, 48, 120);
+      ctx.fillStyle = "#c4a574";
+      ctx.font = "13px sans-serif";
+      ctx.fillText("舷梯", W - 24, H / 2 + 25);
+    }
+
+    if (sceneId === "gangway") {
+      // Rust drip on handrail area
+      const rx = 380, ry = 340;
+      ctx.strokeStyle = flags.seenRust ? "#6a3020" : "#5a4838";
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(340, 300);
+      ctx.lineTo(440, 300);
+      ctx.stroke();
+      if (flags.seenRust || true) {
+        const drip = 8 + Math.sin(animT * 2) * 3;
+        ctx.fillStyle = flags.seenRust ? "rgba(120,50,30,0.85)" : "rgba(100,60,40,0.5)";
+        ctx.beginPath();
+        ctx.ellipse(rx, ry + drip, 5, 8 + drip * 0.3, 0, 0, Math.PI * 2);
+        ctx.fill();
+        if (flags.seenRust) {
+          ctx.fillStyle = "rgba(140,60,35,0.6)";
+          ctx.fillRect(rx - 2, ry, 4, 20 + Math.sin(animT * 3) * 4);
+        }
+      }
+      ctx.fillStyle = "rgba(196,165,116,0.55)";
+      ctx.font = "12px sans-serif";
+      ctx.fillText("扶手", rx, 290);
+
+      ctx.fillStyle = "#4a4030";
+      ctx.fillRect(W - 48, 320, 48, 120);
+      ctx.fillStyle = "#c4a574";
+      ctx.fillText("甲板", W - 24, 385);
+
+      ctx.fillStyle = "#4a4030";
+      ctx.fillRect(48, 320, 40, 120);
+      ctx.fillStyle = "#c4a574";
+      ctx.fillText("碼頭", 68, 385);
+    }
+
+    if (sceneId === "deck") {
+      // Polaroid indicator
+      if (flags.gotPhoto) {
+        ctx.fillStyle = "#e8e4dc";
+        ctx.fillRect(620, 280, 36, 42);
+        ctx.fillStyle = "#2a3038";
+        ctx.fillRect(624, 284, 28, 24);
+        ctx.fillStyle = "#c4a574";
+        ctx.font = "9px sans-serif";
+        ctx.fillText("相", 638, 316);
+      }
+
+      // Rail interact glow when ready
+      if (canClear()) {
+        ctx.strokeStyle = "rgba(196,165,116," + (0.4 + Math.sin(animT * 3) * 0.2) + ")";
+        ctx.lineWidth = 2;
+        ctx.setLineDash([6, 4]);
+        ctx.strokeRect(640, 70, 120, 60);
+        ctx.setLineDash([]);
+      }
+
+      ctx.fillStyle = "#4a4030";
+      ctx.fillRect(48, 350, 48, 100);
+      ctx.fillStyle = "#c4a574";
+      ctx.font = "12px sans-serif";
+      ctx.fillText("舷梯", 72, 405);
+    }
+
+    // NPCs
+    for (const it of interactables) {
+      if (it.isNpc) {
+        drawPerson(it.x, it.y, it.label, it.color || "#8a7a60");
+      }
+    }
+
+    drawPerson(player.x, player.y, "梁子安", "#c4a574", true);
+
+    ctx.fillStyle = theme.fog;
+    ctx.fillRect(0, 0, W, H);
+
+    if (fadeAlpha > 0) {
+      ctx.fillStyle = "rgba(0,0,0," + fadeAlpha + ")";
+      ctx.fillRect(0, 0, W, H);
+    }
+  }
+
+  function drawPerson(x, y, name, color, isPlayer) {
+    ctx.fillStyle = "rgba(0,0,0,0.35)";
+    ctx.beginPath();
+    ctx.ellipse(x, y + 14, 14, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(x, y, isPlayer ? 14 : 13, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = isPlayer ? "#1a1814" : "#1a1a1a";
+    ctx.beginPath();
+    ctx.arc(x, y, 6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = isPlayer ? "#e8e0d4" : "rgba(200,190,170,0.85)";
+    ctx.font = "12px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(name, x, y - 20);
+  }
+
+  function loop(ts) {
+    if (!lastTs) lastTs = ts;
+    const dt = Math.min(0.05, (ts - lastTs) / 1000);
+    lastTs = ts;
+    update(dt);
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

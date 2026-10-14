@@ -1,0 +1,1063 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>無菌室 · 序章：始</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    width: 100%; height: 100%;
+    background: #0a0a0c;
+    color: #e8e4dc;
+    font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", "Heiti TC", sans-serif;
+    overflow: hidden;
+    user-select: none;
+  }
+  #wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100%;
+    padding: 12px;
+    gap: 8px;
+  }
+  #titlebar {
+    width: min(1280px, 100%);
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 0 4px;
+    font-size: 13px;
+    letter-spacing: 0.08em;
+    color: #9a958c;
+  }
+  #titlebar strong { color: #d4cfc4; font-weight: 600; }
+  #stage {
+    position: relative;
+    width: min(1280px, 100%);
+    height: min(720px, calc(100vh - 120px));
+    max-height: 720px;
+    background: #111;
+    border: 1px solid #2a2a30;
+    box-shadow: 0 0 40px rgba(0,0,0,0.6);
+    overflow: hidden;
+  }
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    image-rendering: pixelated;
+  }
+  #hud {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+  #objective {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    max-width: 360px;
+    padding: 10px 14px;
+    background: rgba(8,8,12,0.78);
+    border-left: 3px solid #c4a574;
+    font-size: 14px;
+    line-height: 1.45;
+    color: #e0d8cc;
+  }
+  #objective .label {
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    color: #c4a574;
+    margin-bottom: 4px;
+  }
+  #prompt {
+    position: absolute;
+    padding: 6px 12px;
+    background: rgba(12,12,16,0.9);
+    border: 1px solid #c4a574;
+    color: #f0e8d8;
+    font-size: 13px;
+    white-space: nowrap;
+    transform: translate(-50%, -100%);
+    display: none;
+    pointer-events: none;
+  }
+  #prompt kbd {
+    display: inline-block;
+    padding: 1px 6px;
+    margin-right: 4px;
+    border: 1px solid #c4a574;
+    border-radius: 3px;
+    font-size: 11px;
+    font-family: inherit;
+    color: #c4a574;
+  }
+  #dialogue {
+    position: absolute;
+    left: 24px; right: 24px; bottom: 20px;
+    min-height: 110px;
+    padding: 18px 22px 16px;
+    background: rgba(6,6,10,0.92);
+    border: 1px solid #3a3832;
+    border-top: 2px solid #c4a574;
+    display: none;
+    pointer-events: auto;
+  }
+  #dialogue .speaker {
+    font-size: 13px;
+    color: #c4a574;
+    letter-spacing: 0.1em;
+    margin-bottom: 8px;
+  }
+  #dialogue .text {
+    font-size: 16px;
+    line-height: 1.55;
+    color: #efe9df;
+    min-height: 48px;
+  }
+  #dialogue .hint {
+    margin-top: 10px;
+    font-size: 12px;
+    color: #7a756c;
+    text-align: right;
+  }
+  #phone {
+    position: absolute;
+    right: 40px;
+    bottom: 150px;
+    width: 280px;
+    background: #12141a;
+    border: 1px solid #3a4555;
+    border-radius: 12px;
+    padding: 14px;
+    display: none;
+    pointer-events: auto;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+  }
+  #phone .ph-header {
+    font-size: 12px;
+    color: #8ab4f8;
+    margin-bottom: 10px;
+    letter-spacing: 0.06em;
+  }
+  #phone .bubble {
+    background: #1e2430;
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 14px;
+    line-height: 1.5;
+    color: #dde3ec;
+    margin-bottom: 12px;
+  }
+  #phone .bubble .from {
+    font-size: 11px;
+    color: #8ab4f8;
+    margin-bottom: 4px;
+  }
+  #phone .reply-btn {
+    width: 100%;
+    padding: 10px;
+    background: #2a5080;
+    border: none;
+    border-radius: 8px;
+    color: #fff;
+    font-size: 15px;
+    font-family: inherit;
+    cursor: pointer;
+    letter-spacing: 0.2em;
+  }
+  #phone .reply-btn:hover { background: #3560a0; }
+  #phone .reply-btn:disabled {
+    background: #333;
+    color: #888;
+    cursor: default;
+  }
+  #endcard {
+    position: absolute;
+    inset: 0;
+    background: rgba(4,4,8,0.94);
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    pointer-events: auto;
+    text-align: center;
+    padding: 40px;
+  }
+  #endcard h1 {
+    font-size: 28px;
+    font-weight: 500;
+    letter-spacing: 0.15em;
+    color: #e8e0d4;
+  }
+  #endcard p {
+    font-size: 15px;
+    color: #9a958c;
+    line-height: 1.7;
+    max-width: 420px;
+  }
+  #endcard .seal {
+    margin-top: 12px;
+    font-size: 12px;
+    letter-spacing: 0.2em;
+    color: #c4a574;
+  }
+  #controls-hint {
+    width: min(1280px, 100%);
+    font-size: 12px;
+    color: #5a564e;
+    text-align: center;
+    letter-spacing: 0.04em;
+  }
+  #title-screen {
+    position: absolute;
+    inset: 0;
+    background: #0c0c10;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    z-index: 20;
+    pointer-events: auto;
+  }
+  #title-screen h1 {
+    font-size: 36px;
+    font-weight: 400;
+    letter-spacing: 0.35em;
+    color: #e8e0d4;
+  }
+  #title-screen .sub {
+    font-size: 14px;
+    color: #8a857a;
+    letter-spacing: 0.2em;
+  }
+  #title-screen button {
+    margin-top: 24px;
+    padding: 12px 36px;
+    background: transparent;
+    border: 1px solid #c4a574;
+    color: #c4a574;
+    font-size: 15px;
+    font-family: inherit;
+    letter-spacing: 0.2em;
+    cursor: pointer;
+  }
+  #title-screen button:hover {
+    background: rgba(196,165,116,0.12);
+  }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="titlebar">
+    <span><strong>無菌室</strong> · 序章：始</span>
+    <span id="scene-label">—</span>
+  </div>
+  <div id="stage">
+    <canvas id="cv" width="1280" height="720"></canvas>
+    <div id="hud">
+      <div id="objective"><div class="label">目標</div><div id="obj-text">—</div></div>
+      <div id="prompt"><kbd>E</kbd><span id="prompt-text">互動</span></div>
+    </div>
+    <div id="dialogue">
+      <div class="speaker" id="dlg-speaker"></div>
+      <div class="text" id="dlg-text"></div>
+      <div class="hint">按 E / Space / Enter 繼續</div>
+    </div>
+    <div id="phone">
+      <div class="ph-header">訊息</div>
+      <div class="bubble">
+        <div class="from">許曼</div>
+        <div id="phone-msg">週六舊區渡輪同學聚會，你也來。周朗也會來。白石中學後巷訂了位子。</div>
+      </div>
+      <button class="reply-btn" id="reply-btn">回覆「到」</button>
+    </div>
+    <div id="endcard">
+      <h1>週六的那艘船，即將離岸。</h1>
+      <p>序章結束。<br/>下一章：第1關｜鐵鏽與舊航線</p>
+      <div class="seal">— 無菌室 · 第一卷 —</div>
+      <a href="level1.html" id="to-level1" style="margin-top:16px;padding:12px 36px;border:1px solid #c4a574;color:#c4a574;text-decoration:none;font-size:14px;letter-spacing:0.15em;display:inline-block">進入第1關</a>
+    </div>
+    <div id="title-screen">
+      <h1>無菌室</h1>
+      <div class="sub">序章：始</div>
+      <div class="sub" style="margin-top:8px;letter-spacing:0.08em;font-size:12px;color:#5a564e">俯視解謎 · 梁子安</div>
+      <button id="start-btn">開始</button>
+    </div>
+  </div>
+  <div id="controls-hint">移動 WASD / 方向鍵　互動 E / Space　對話繼續 E / Space / Enter</div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  const W = 1280, H = 720;
+  const TILE = 40;
+  const PLAYER_SIZE = 28;
+  const SPEED = 180;
+
+  const canvas = document.getElementById("cv");
+  const ctx = canvas.getContext("2d");
+  const objText = document.getElementById("obj-text");
+  const sceneLabel = document.getElementById("scene-label");
+  const promptEl = document.getElementById("prompt");
+  const promptText = document.getElementById("prompt-text");
+  const dialogueEl = document.getElementById("dialogue");
+  const dlgSpeaker = document.getElementById("dlg-speaker");
+  const dlgText = document.getElementById("dlg-text");
+  const phoneEl = document.getElementById("phone");
+  const replyBtn = document.getElementById("reply-btn");
+  const endcard = document.getElementById("endcard");
+  const titleScreen = document.getElementById("title-screen");
+  const startBtn = document.getElementById("start-btn");
+
+  // ——— Flags ———
+  const flags = {
+    seenBlot: false,
+    comparedBackup: false,
+    talkedAcheng: false,
+    sugarFixed: false,
+    talkedEjie: false,
+    gotSlip: false,
+    phoneShown: false,
+    replied: false,
+  };
+
+  let sceneId = "office";
+  let player = { x: 200, y: 360, vx: 0, vy: 0 };
+  let keys = {};
+  let interactables = [];
+  let solids = [];
+  let walls = [];
+  let nearby = null;
+  let dialogueQueue = [];
+  let inDialogue = false;
+  let phoneOpen = false;
+  let gameStarted = false;
+  let lastTs = 0;
+  let animT = 0;
+
+  // Scene color themes
+  const themes = {
+    office:   { floor: "#1a1a20", wall: "#2c2c34", accent: "#3a3a44", fog: "rgba(10,10,14,0.15)" },
+    breakfast:{ floor: "#2a2218", wall: "#4a3a28", accent: "#5c4830", fog: "rgba(60,40,20,0.12)" },
+    clinic:   { floor: "#1c2228", wall: "#2a343c", accent: "#3a4850", fog: "rgba(20,30,40,0.18)" },
+  };
+
+  function setObjective(t) { objText.textContent = t; }
+  function setSceneLabel(t) { sceneLabel.textContent = t; }
+
+  function showDialogue(lines) {
+    dialogueQueue = lines.slice();
+    inDialogue = true;
+    advanceDialogue();
+  }
+
+  function advanceDialogue() {
+    if (dialogueQueue.length === 0) {
+      dialogueEl.style.display = "none";
+      inDialogue = false;
+      onDialogueEnd();
+      return;
+    }
+    const line = dialogueQueue.shift();
+    dlgSpeaker.textContent = line.speaker || "";
+    dlgText.textContent = line.text;
+    dialogueEl.style.display = "block";
+  }
+
+  let pendingDialogueEnd = null;
+  function onDialogueEnd() {
+    if (pendingDialogueEnd) {
+      const fn = pendingDialogueEnd;
+      pendingDialogueEnd = null;
+      fn();
+    }
+    updateObjective();
+  }
+
+  function updateObjective() {
+    if (sceneId === "office") {
+      if (!flags.seenBlot) setObjective("核對桌上的單據。");
+      else if (!flags.talkedAcheng) setObjective("和阿成確認單據上的異常。");
+      else setObjective("離開辦事處。");
+    } else if (sceneId === "breakfast") {
+      if (!flags.sugarFixed) setObjective("留意靠窗座位與桌上的糖罐。");
+      else if (!flags.talkedEjie) setObjective("可與娥姐交談，或離開早餐店。");
+      else setObjective("離開早餐店。");
+    } else if (sceneId === "clinic") {
+      if (!flags.gotSlip) setObjective("找張醫生檢查。");
+      else if (!flags.replied) setObjective("查看手機訊息。");
+      else setObjective("—");
+    }
+  }
+
+  // ——— Collision helpers ———
+  function rectsOverlap(a, b) {
+    return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+  }
+
+  function playerRect(px, py) {
+    return { x: px - PLAYER_SIZE / 2, y: py - PLAYER_SIZE / 2, w: PLAYER_SIZE, h: PLAYER_SIZE };
+  }
+
+  function blocked(px, py) {
+    const pr = playerRect(px, py);
+    for (const s of solids) {
+      if (rectsOverlap(pr, s)) return true;
+    }
+    // keep inside play area with margin
+    if (px < 30 || px > W - 30 || py < 30 || py > H - 30) return true;
+    return false;
+  }
+
+  function dist(ax, ay, bx, by) {
+    const dx = ax - bx, dy = ay - by;
+    return Math.sqrt(dx * dx + dy * dy);
+  }
+
+  // ——— Scene builders ———
+  function buildOffice() {
+    sceneId = "office";
+    setSceneLabel("舊區辦事處");
+    player = { x: 180, y: 400, vx: 0, vy: 0 };
+    solids = [];
+    interactables = [];
+
+    // Outer walls as thick solids
+    solids.push({ x: 0, y: 0, w: W, h: 48, label: "wall" });
+    solids.push({ x: 0, y: H - 48, w: W, h: 48, label: "wall" });
+    solids.push({ x: 0, y: 0, w: 48, h: H, label: "wall" });
+    solids.push({ x: W - 48, y: 0, w: 48, h: H, label: "wall" });
+
+    // Player desk (left) — lowered so a walkable aisle sits between cabinets and desk
+    solids.push({ x: 120, y: 250, w: 200, h: 100, label: "desk", color: "#3a342c" });
+    // Filing cabinets — raised toward the north wall to open the aisle
+    solids.push({ x: 80, y: 55, w: 70, h: 90, label: "cabinet", color: "#2e2e36" });
+    solids.push({ x: 160, y: 55, w: 70, h: 90, label: "cabinet", color: "#2e2e36" });
+    solids.push({ x: 240, y: 55, w: 70, h: 90, label: "cabinet", color: "#2e2e36" });
+    // Acheng desk
+    solids.push({ x: 700, y: 280, w: 200, h: 100, label: "desk", color: "#3a342c" });
+    // Partition
+    solids.push({ x: 520, y: 80, w: 24, h: 280, label: "partition", color: "#25252c" });
+
+    // Interactables
+    interactables.push({
+      id: "docs",
+      x: 220, y: 265, r: 60,
+      label: "單據",
+      prompt: "核對單據",
+      action: interactDocs,
+    });
+    interactables.push({
+      id: "drawer",
+      x: 115, y: 110, r: 50,
+      label: "抽屜備份",
+      prompt: "翻查備份",
+      action: interactDrawer,
+    });
+    interactables.push({
+      id: "acheng",
+      x: 800, y: 300, r: 60,
+      label: "阿成",
+      prompt: "與阿成交談",
+      action: interactAcheng,
+      isNpc: true,
+    });
+    interactables.push({
+      id: "exit",
+      x: W - 70, y: H / 2, r: 55,
+      label: "出口",
+      prompt: "離開辦事處",
+      action: tryExitOffice,
+      isExit: true,
+    });
+
+    updateObjective();
+  }
+
+  function buildBreakfast() {
+    sceneId = "breakfast";
+    setSceneLabel("騎樓早餐店");
+    player = { x: 160, y: 500, vx: 0, vy: 0 };
+    solids = [];
+    interactables = [];
+
+    solids.push({ x: 0, y: 0, w: W, h: 48, label: "wall" });
+    solids.push({ x: 0, y: H - 48, w: W, h: 48, label: "wall" });
+    solids.push({ x: 0, y: 0, w: 48, h: H, label: "wall" });
+    solids.push({ x: W - 48, y: 0, w: 48, h: H, label: "wall" });
+
+    // Counter
+    solids.push({ x: 80, y: 100, w: 480, h: 70, label: "counter", color: "#5a4030" });
+    // Tables
+    solids.push({ x: 200, y: 320, w: 120, h: 80, label: "table", color: "#4a3828" });
+    solids.push({ x: 420, y: 320, w: 120, h: 80, label: "table", color: "#4a3828" });
+    solids.push({ x: 640, y: 320, w: 120, h: 80, label: "table", color: "#4a3828" }); // 靠窗
+    solids.push({ x: 200, y: 480, w: 120, h: 80, label: "table", color: "#4a3828" });
+    solids.push({ x: 420, y: 480, w: 120, h: 80, label: "table", color: "#4a3828" });
+
+    interactables.push({
+      id: "windowSeat",
+      x: 700, y: 360, r: 55,
+      label: "靠窗座位",
+      prompt: "查看靠窗座位",
+      action: interactWindowSeat,
+      highlight: true,
+    });
+    interactables.push({
+      id: "sugar",
+      x: 680, y: 340, r: 45,
+      label: "糖罐",
+      prompt: flags.sugarFixed ? "糖罐（已歸位）" : "扶正糖罐",
+      action: interactSugar,
+    });
+    interactables.push({
+      id: "ejie",
+      x: 280, y: 130, r: 60,
+      label: "娥姐",
+      prompt: "與娥姐交談",
+      action: interactEjie,
+      isNpc: true,
+    });
+    interactables.push({
+      id: "exit",
+      x: 80, y: H - 80, r: 55,
+      label: "出口",
+      prompt: "離開早餐店",
+      action: tryExitBreakfast,
+      isExit: true,
+    });
+
+    updateObjective();
+  }
+
+  function buildClinic() {
+    sceneId = "clinic";
+    setSceneLabel("診所");
+    player = { x: 200, y: 500, vx: 0, vy: 0 };
+    solids = [];
+    interactables = [];
+
+    solids.push({ x: 0, y: 0, w: W, h: 48, label: "wall" });
+    solids.push({ x: 0, y: H - 48, w: W, h: 48, label: "wall" });
+    solids.push({ x: 0, y: 0, w: 48, h: H, label: "wall" });
+    solids.push({ x: W - 48, y: 0, w: 48, h: H, label: "wall" });
+
+    // Waiting chairs
+    solids.push({ x: 100, y: 400, w: 80, h: 50, label: "chair", color: "#3a4850" });
+    solids.push({ x: 200, y: 400, w: 80, h: 50, label: "chair", color: "#3a4850" });
+    solids.push({ x: 300, y: 400, w: 80, h: 50, label: "chair", color: "#3a4850" });
+    // Exam room divider
+    solids.push({ x: 560, y: 48, w: 20, h: 400, label: "wall", color: "#2a343c" });
+    // Exam desk / instruments
+    solids.push({ x: 700, y: 160, w: 280, h: 90, label: "desk", color: "#3a4850" });
+    solids.push({ x: 720, y: 320, w: 160, h: 100, label: "bed", color: "#4a5860" });
+
+    interactables.push({
+      id: "doctor",
+      x: 840, y: 200, r: 65,
+      label: "張醫生",
+      prompt: "與張醫生交談",
+      action: interactDoctor,
+      isNpc: true,
+    });
+    interactables.push({
+      id: "instruments",
+      x: 780, y: 180, r: 45,
+      label: "儀器",
+      prompt: "查看儀器",
+      action: function () {
+        showDialogue([
+          { speaker: "梁子安", text: "儀器讀數平穩。一切「正常」。" },
+        ]);
+      },
+    });
+
+    updateObjective();
+  }
+
+  // ——— Interactions ———
+  function interactDocs() {
+    if (flags.seenBlot) {
+      showDialogue([
+        { speaker: "梁子安", text: "同住親屬欄位仍是那團墨斑。墨跡乾透，邊緣沒有暈開——像從來就該長在那裡。" },
+      ]);
+      return;
+    }
+    flags.seenBlot = true;
+    showDialogue([
+      { speaker: "梁子安", text: "單據核對……姓名、地址都對。" },
+      { speaker: "梁子安", text: "同住親屬欄——那裡不該是空白。我記得有孩子的名字。" },
+      { speaker: "系統", text: "欄位中央是一團墨斑。像有人用指腹按熄過字跡，又像從未寫過。" },
+      { speaker: "梁子安", text: "……壞軌？" },
+    ]);
+  }
+
+  function interactDrawer() {
+    if (!flags.seenBlot) {
+      showDialogue([
+        { speaker: "梁子安", text: "抽屜裡是備份單據。先核對桌上那份。" },
+      ]);
+      return;
+    }
+    flags.comparedBackup = true;
+    showDialogue([
+      { speaker: "梁子安", text: "備份也一樣。同住親屬欄——同樣的墨斑，位置分毫不差。" },
+      { speaker: "梁子安", text: "不是印錯。是資訊本身壞了。" },
+    ]);
+  }
+
+  function interactAcheng() {
+    if (!flags.seenBlot) {
+      showDialogue([
+        { speaker: "阿成", text: "子安，單據還好吧？趕著下班的話先核完桌上那疊。" },
+      ]);
+      return;
+    }
+    flags.talkedAcheng = true;
+    showDialogue([
+      { speaker: "梁子安", text: "阿成，這份單據的同住親屬欄……你看。" },
+      { speaker: "阿成", text: "看什麼？墨斑？可能蓋章蓋歪了。" },
+      { speaker: "梁子安", text: "我記得這戶有個孩子。" },
+      { speaker: "阿成", text: "哪有？單據上寫什麼，那就是什麼。你別想太多。" },
+      { speaker: "梁子安", text: "……" },
+    ]);
+  }
+
+  function tryExitOffice() {
+    if (!flags.seenBlot) {
+      showDialogue([
+        { speaker: "梁子安", text: "單據還沒核完。" },
+      ]);
+      return;
+    }
+    // Unlock after seenBlot (talkedAcheng preferred but optional per spec)
+    if (!flags.talkedAcheng) {
+      showDialogue([
+        { speaker: "梁子安", text: "墨斑還在腦裡。出去透透氣也好。" },
+      ]);
+      pendingDialogueEnd = function () { fadeToScene(buildBreakfast); };
+      return;
+    }
+    showDialogue([
+      { speaker: "梁子安", text: "單據上寫什麼，那就是什麼——他說得那麼篤定。" },
+    ]);
+    pendingDialogueEnd = function () { fadeToScene(buildBreakfast); };
+  }
+
+  function interactWindowSeat() {
+    showDialogue([
+      { speaker: "梁子安", text: "靠窗那位……今天沒來。" },
+      { speaker: "梁子安", text: "位子空着，杯沿還有一圈淡痕，像有人剛離開——又像從來沒人坐過。" },
+    ]);
+  }
+
+  function interactSugar() {
+    if (flags.sugarFixed) {
+      showDialogue([
+        { speaker: "梁子安", text: "糖罐已經歸位。那聲輕響還在指節裡。" },
+      ]);
+      return;
+    }
+    flags.sugarFixed = true;
+    // refresh prompt label
+    const s = interactables.find(function (i) { return i.id === "sugar"; });
+    if (s) s.prompt = "糖罐（已歸位）";
+    showDialogue([
+      { speaker: "梁子安", text: "桌上的糖罐斜着，像隨時會倒。" },
+      { speaker: "系統", text: "你伸出手。指節穩定——沒有顫抖。" },
+      { speaker: "系統", text: "咔。糖罐歸中。聲音乾淨得不像這個潮濕的早晨。" },
+      { speaker: "梁子安", text: "手很穩。" },
+    ]);
+  }
+
+  function interactEjie() {
+    flags.talkedEjie = true;
+    showDialogue([
+      { speaker: "娥姐", text: "子安？照舊腸粉？今天人少。" },
+      { speaker: "娥姐", text: "聽說白石中學停課了。有老師沒來——消息亂糟糟的。" },
+      { speaker: "梁子安", text: "白石中學……" },
+      { speaker: "娥姐", text: "別想了。坐啦，我給你裝一碗。" },
+    ]);
+  }
+
+  function tryExitBreakfast() {
+    if (!flags.sugarFixed) {
+      showDialogue([
+        { speaker: "梁子安", text: "靠窗那桌的糖罐還斜着……手一伸就能扶正。" },
+      ]);
+      return;
+    }
+    showDialogue([
+      { speaker: "梁子安", text: "該去診所了。儀器總會說「正常」。" },
+    ]);
+    pendingDialogueEnd = function () { fadeToScene(buildClinic); };
+  }
+
+  function interactDoctor() {
+    if (flags.gotSlip) {
+      showDialogue([
+        { speaker: "張醫生", text: "單據你收好。沒有精神異常——放心。" },
+      ]);
+      if (!flags.phoneShown) {
+        pendingDialogueEnd = showPhone;
+      }
+      return;
+    }
+    flags.gotSlip = true;
+    showDialogue([
+      { speaker: "張醫生", text: "梁先生，儀器都正常。血壓、反射、神經傳導——沒問題。" },
+      { speaker: "梁子安", text: "我記得一些……對不上的事。" },
+      { speaker: "張醫生", text: "記憶會出錯。這很常見。" },
+      { speaker: "系統", text: "診斷單上印着：無精神異常。" },
+      { speaker: "張醫生", text: "拿着單據吧。回去好好休息。" },
+    ]);
+    pendingDialogueEnd = showPhone;
+  }
+
+  function showPhone() {
+    flags.phoneShown = true;
+    phoneOpen = true;
+    phoneEl.style.display = "block";
+    updateObjective();
+  }
+
+  replyBtn.addEventListener("click", function () {
+    if (flags.replied) return;
+    flags.replied = true;
+    replyBtn.disabled = true;
+    replyBtn.textContent = "已回覆「到」";
+    phoneOpen = false;
+    setTimeout(function () {
+      phoneEl.style.display = "none";
+      endcard.style.display = "flex";
+    }, 600);
+  });
+
+  // ——— Scene transition ———
+  let fading = false;
+  let fadeAlpha = 0;
+  let fadeDir = 0;
+  let fadeCallback = null;
+
+  function fadeToScene(builder) {
+    if (fading) return;
+    fading = true;
+    fadeDir = 1;
+    fadeCallback = builder;
+  }
+
+  function updateFade(dt) {
+    if (!fading) return;
+    fadeAlpha += fadeDir * dt * 2.5;
+    if (fadeDir > 0 && fadeAlpha >= 1) {
+      fadeAlpha = 1;
+      if (fadeCallback) {
+        fadeCallback();
+        fadeCallback = null;
+      }
+      fadeDir = -1;
+    } else if (fadeDir < 0 && fadeAlpha <= 0) {
+      fadeAlpha = 0;
+      fading = false;
+      fadeDir = 0;
+    }
+  }
+
+  // ——— Input ———
+  window.addEventListener("keydown", function (e) {
+    const k = e.key.toLowerCase();
+    keys[k] = true;
+    if (["arrowup","arrowdown","arrowleft","arrowright"," "].indexOf(e.key.toLowerCase()) >= 0 ||
+        e.key === " ") {
+      e.preventDefault();
+    }
+    if (!gameStarted) return;
+    if (e.key === " " || k === "e" || k === "enter") {
+      if (inDialogue) {
+        e.preventDefault();
+        advanceDialogue();
+      } else if (!phoneOpen && !fading && endcard.style.display !== "flex") {
+        e.preventDefault();
+        tryInteract();
+      }
+    }
+  });
+  window.addEventListener("keyup", function (e) {
+    keys[e.key.toLowerCase()] = false;
+  });
+
+  startBtn.addEventListener("click", function () {
+    titleScreen.style.display = "none";
+    gameStarted = true;
+    buildOffice();
+    showDialogue([
+      { speaker: "系統", text: "舊區辦事處。另一個尋常的早晨。" },
+      { speaker: "梁子安", text: "單據還剩最後幾份。" },
+    ]);
+  });
+
+  function tryInteract() {
+    if (!nearby) return;
+    nearby.action();
+  }
+
+  function findNearby() {
+    let best = null, bestD = Infinity;
+    for (const it of interactables) {
+      const d = dist(player.x, player.y, it.x, it.y);
+      if (d < it.r && d < bestD) {
+        best = it;
+        bestD = d;
+      }
+    }
+    return best;
+  }
+
+  // ——— Update / Draw ———
+  function update(dt) {
+    if (!gameStarted) return;
+    updateFade(dt);
+    animT += dt;
+
+    if (inDialogue || phoneOpen || fading || endcard.style.display === "flex") {
+      nearby = null;
+      promptEl.style.display = "none";
+      return;
+    }
+
+    let mx = 0, my = 0;
+    if (keys["w"] || keys["arrowup"]) my -= 1;
+    if (keys["s"] || keys["arrowdown"]) my += 1;
+    if (keys["a"] || keys["arrowleft"]) mx -= 1;
+    if (keys["d"] || keys["arrowright"]) mx += 1;
+    if (mx !== 0 || my !== 0) {
+      const len = Math.sqrt(mx * mx + my * my);
+      mx /= len; my /= len;
+      const nx = player.x + mx * SPEED * dt;
+      const ny = player.y + my * SPEED * dt;
+      if (!blocked(nx, player.y)) player.x = nx;
+      if (!blocked(player.x, ny)) player.y = ny;
+    }
+
+    nearby = findNearby();
+    if (nearby) {
+      promptText.textContent = nearby.prompt;
+      // Position prompt in screen space relative to canvas CSS size
+      const rect = canvas.getBoundingClientRect();
+      const stage = document.getElementById("stage").getBoundingClientRect();
+      const sx = (nearby.x / W) * rect.width + (rect.left - stage.left);
+      const sy = (nearby.y / H) * rect.height + (rect.top - stage.top) - 20;
+      promptEl.style.left = sx + "px";
+      promptEl.style.top = sy + "px";
+      promptEl.style.display = "block";
+    } else {
+      promptEl.style.display = "none";
+    }
+  }
+
+  function draw() {
+    const theme = themes[sceneId] || themes.office;
+    ctx.fillStyle = theme.floor;
+    ctx.fillRect(0, 0, W, H);
+
+    // Floor pattern
+    ctx.strokeStyle = "rgba(255,255,255,0.03)";
+    ctx.lineWidth = 1;
+    for (let x = 0; x < W; x += TILE) {
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+    }
+    for (let y = 0; y < H; y += TILE) {
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+    }
+
+    // Solids / furniture
+    for (const s of solids) {
+      if (s.label === "wall") {
+        ctx.fillStyle = theme.wall;
+      } else {
+        ctx.fillStyle = s.color || theme.accent;
+      }
+      ctx.fillRect(s.x, s.y, s.w, s.h);
+      // subtle edge
+      ctx.strokeStyle = "rgba(0,0,0,0.35)";
+      ctx.strokeRect(s.x + 0.5, s.y + 0.5, s.w - 1, s.h - 1);
+    }
+
+    // Furniture labels
+    ctx.font = "12px sans-serif";
+    ctx.fillStyle = "rgba(200,190,170,0.45)";
+    ctx.textAlign = "center";
+    for (const s of solids) {
+      if (s.label === "desk") {
+        ctx.fillText("桌", s.x + s.w / 2, s.y + s.h / 2 + 4);
+      } else if (s.label === "cabinet") {
+        ctx.fillText("櫃", s.x + s.w / 2, s.y + s.h / 2 + 4);
+      } else if (s.label === "counter") {
+        ctx.fillText("櫃檯", s.x + s.w / 2, s.y + s.h / 2 + 4);
+      } else if (s.label === "table") {
+        ctx.fillText("桌", s.x + s.w / 2, s.y + s.h / 2 + 4);
+      } else if (s.label === "chair") {
+        ctx.fillText("椅", s.x + s.w / 2, s.y + s.h / 2 + 4);
+      } else if (s.label === "bed") {
+        ctx.fillText("診床", s.x + s.w / 2, s.y + s.h / 2 + 4);
+      }
+    }
+
+    // Scene-specific decorations
+    if (sceneId === "office") {
+      // Document stack on desk (aligned with lowered player desk)
+      ctx.fillStyle = flags.seenBlot ? "#2a2018" : "#d8d0c0";
+      ctx.fillRect(200, 260, 36, 28);
+      ctx.fillStyle = "#c0b8a8";
+      ctx.fillRect(204, 256, 36, 28);
+      if (flags.seenBlot) {
+        ctx.fillStyle = "#0a0a0a";
+        ctx.beginPath();
+        ctx.arc(222, 270, 6, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      // Exit door mark
+      ctx.fillStyle = "#4a4030";
+      ctx.fillRect(W - 48, H / 2 - 50, 48, 100);
+      ctx.fillStyle = "#c4a574";
+      ctx.font = "13px sans-serif";
+      ctx.fillText("門", W - 24, H / 2 + 5);
+    }
+
+    if (sceneId === "breakfast") {
+      // Window highlight for 靠窗
+      ctx.strokeStyle = "rgba(196,165,116,0.5)";
+      ctx.lineWidth = 2;
+      ctx.setLineDash([6, 4]);
+      ctx.strokeRect(630, 300, 140, 120);
+      ctx.setLineDash([]);
+      ctx.fillStyle = "rgba(196,165,116,0.7)";
+      ctx.font = "12px sans-serif";
+      ctx.fillText("靠窗", 700, 295);
+
+      // Sugar jar
+      const sx = 680, sy = 335;
+      if (!flags.sugarFixed) {
+        ctx.save();
+        ctx.translate(sx, sy);
+        ctx.rotate(-0.25);
+        ctx.fillStyle = "#e8dcc8";
+        ctx.fillRect(-8, -14, 16, 28);
+        ctx.fillStyle = "#c4a574";
+        ctx.fillRect(-10, -16, 20, 6);
+        ctx.restore();
+      } else {
+        ctx.fillStyle = "#e8dcc8";
+        ctx.fillRect(sx - 8, sy - 14, 16, 28);
+        ctx.fillStyle = "#c4a574";
+        ctx.fillRect(sx - 10, sy - 16, 20, 6);
+        // click spark
+        if (animT < 999) {
+          ctx.fillStyle = "rgba(196,165,116,0.3)";
+          ctx.beginPath();
+          ctx.arc(sx, sy, 20 + Math.sin(animT * 4) * 3, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      // Exit
+      ctx.fillStyle = "#5a4030";
+      ctx.fillRect(48, H - 120, 60, 72);
+      ctx.fillStyle = "#c4a574";
+      ctx.fillText("門", 78, H - 78);
+    }
+
+    if (sceneId === "clinic") {
+      // Doorway to exam
+      ctx.fillStyle = theme.floor;
+      ctx.fillRect(560, 450, 20, 220);
+      ctx.fillStyle = "rgba(180,200,210,0.3)";
+      ctx.font = "12px sans-serif";
+      ctx.fillText("候診", 240, 380);
+      ctx.fillText("診療室", 840, 120);
+
+      // Diagnosis slip indicator
+      if (flags.gotSlip) {
+        ctx.fillStyle = "#e8e4dc";
+        ctx.fillRect(860, 250, 40, 28);
+        ctx.fillStyle = "#5a564e";
+        ctx.font = "10px sans-serif";
+        ctx.fillText("診斷單", 880, 268);
+      }
+    }
+
+    // NPCs
+    for (const it of interactables) {
+      if (it.isNpc) {
+        drawPerson(it.x, it.y, it.label, sceneId === "clinic" ? "#6a8a9a" : "#8a7a60");
+      }
+      if (it.isExit) {
+        // already drawn door
+      }
+    }
+
+    // Player — 梁子安
+    drawPerson(player.x, player.y, "梁子安", "#c4a574", true);
+
+    // Fog overlay
+    ctx.fillStyle = theme.fog;
+    ctx.fillRect(0, 0, W, H);
+
+    // Fade
+    if (fadeAlpha > 0) {
+      ctx.fillStyle = "rgba(0,0,0," + fadeAlpha + ")";
+      ctx.fillRect(0, 0, W, H);
+    }
+  }
+
+  function drawPerson(x, y, name, color, isPlayer) {
+    // shadow
+    ctx.fillStyle = "rgba(0,0,0,0.35)";
+    ctx.beginPath();
+    ctx.ellipse(x, y + 14, 14, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // body
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(x, y, isPlayer ? 14 : 13, 0, Math.PI * 2);
+    ctx.fill();
+    // inner
+    ctx.fillStyle = isPlayer ? "#1a1814" : "#1a1a1a";
+    ctx.beginPath();
+    ctx.arc(x, y, 6, 0, Math.PI * 2);
+    ctx.fill();
+    // name
+    ctx.fillStyle = isPlayer ? "#e8e0d4" : "rgba(200,190,170,0.85)";
+    ctx.font = "12px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(name, x, y - 20);
+  }
+
+  function loop(ts) {
+    if (!lastTs) lastTs = ts;
+    const dt = Math.min(0.05, (ts - lastTs) / 1000);
+    lastTs = ts;
+    update(dt);
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  // Fit canvas CSS while keeping internal res
+  function resize() {
+    // canvas internal is fixed 1280x720; CSS handles display size
+  }
+  window.addEventListener("resize", resize);
+
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,1229 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>無菌室 · 第2關：起霧與失控</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    width: 100%; height: 100%;
+    background: #0a0a0c;
+    color: #e8e4dc;
+    font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", "Heiti TC", sans-serif;
+    overflow: hidden;
+    user-select: none;
+  }
+  #wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100%;
+    padding: 12px;
+    gap: 8px;
+  }
+  #titlebar {
+    width: min(1280px, 100%);
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 0 4px;
+    font-size: 13px;
+    letter-spacing: 0.08em;
+    color: #9a958c;
+  }
+  #titlebar strong { color: #d4cfc4; font-weight: 600; }
+  #stage {
+    position: relative;
+    width: min(1280px, 100%);
+    height: min(720px, calc(100vh - 120px));
+    max-height: 720px;
+    background: #111;
+    border: 1px solid #2a2a30;
+    box-shadow: 0 0 40px rgba(0,0,0,0.6);
+    overflow: hidden;
+  }
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    image-rendering: pixelated;
+  }
+  #hud {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+  #objective {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    max-width: 360px;
+    padding: 10px 14px;
+    background: rgba(8,8,12,0.78);
+    border-left: 3px solid #c4a574;
+    font-size: 14px;
+    line-height: 1.45;
+    color: #e0d8cc;
+  }
+  #objective .label {
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    color: #c4a574;
+    margin-bottom: 4px;
+  }
+  #flags-hud {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    padding: 8px 12px;
+    background: rgba(8,8,12,0.72);
+    border: 1px solid #2a2a30;
+    font-size: 11px;
+    line-height: 1.6;
+    color: #7a756c;
+    letter-spacing: 0.04em;
+  }
+  #flags-hud .ok { color: #c4a574; }
+  #flags-hud .warn { color: #c47874; }
+  #timer-hud {
+    position: absolute;
+    top: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 8px 18px;
+    background: rgba(8,8,12,0.85);
+    border: 1px solid #5a4038;
+    font-size: 18px;
+    letter-spacing: 0.12em;
+    color: #c4a574;
+    display: none;
+  }
+  #timer-hud.urgent { color: #c47874; border-color: #8a4040; }
+  #prompt {
+    position: absolute;
+    padding: 6px 12px;
+    background: rgba(12,12,16,0.9);
+    border: 1px solid #c4a574;
+    color: #f0e8d8;
+    font-size: 13px;
+    white-space: nowrap;
+    transform: translate(-50%, -100%);
+    display: none;
+    pointer-events: none;
+  }
+  #prompt kbd {
+    display: inline-block;
+    padding: 1px 6px;
+    margin-right: 4px;
+    border: 1px solid #c4a574;
+    border-radius: 3px;
+    font-size: 11px;
+    font-family: inherit;
+    color: #c4a574;
+  }
+  #dialogue {
+    position: absolute;
+    left: 24px; right: 24px; bottom: 20px;
+    min-height: 110px;
+    padding: 18px 22px 16px;
+    background: rgba(6,6,10,0.92);
+    border: 1px solid #3a3832;
+    border-top: 2px solid #c4a574;
+    display: none;
+    pointer-events: auto;
+  }
+  #dialogue .speaker {
+    font-size: 13px;
+    color: #c4a574;
+    letter-spacing: 0.1em;
+    margin-bottom: 8px;
+  }
+  #dialogue .text {
+    font-size: 16px;
+    line-height: 1.55;
+    color: #efe9df;
+    min-height: 48px;
+  }
+  #dialogue .hint {
+    margin-top: 10px;
+    font-size: 12px;
+    color: #7a756c;
+    text-align: right;
+  }
+  #endcard, #failcard {
+    position: absolute;
+    inset: 0;
+    background: rgba(4,4,8,0.94);
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    pointer-events: auto;
+    text-align: center;
+    padding: 40px;
+  }
+  #endcard h1, #failcard h1 {
+    font-size: 28px;
+    font-weight: 500;
+    letter-spacing: 0.15em;
+    color: #e8e0d4;
+  }
+  #failcard h1 { color: #c47874; }
+  #endcard p, #failcard p {
+    font-size: 15px;
+    color: #9a958c;
+    line-height: 1.7;
+    max-width: 420px;
+  }
+  #endcard .seal, #failcard .seal {
+    margin-top: 12px;
+    font-size: 12px;
+    letter-spacing: 0.2em;
+    color: #c4a574;
+  }
+  #endcard a.continue, #failcard button.retry {
+    margin-top: 8px;
+    padding: 12px 36px;
+    border: 1px solid #c4a574;
+    color: #c4a574;
+    text-decoration: none;
+    font-size: 14px;
+    letter-spacing: 0.15em;
+    background: transparent;
+    font-family: inherit;
+    cursor: pointer;
+  }
+  #endcard a.continue:hover, #failcard button.retry:hover {
+    background: rgba(196,165,116,0.12);
+  }
+  #controls-hint {
+    width: min(1280px, 100%);
+    font-size: 12px;
+    color: #5a564e;
+    text-align: center;
+    letter-spacing: 0.04em;
+  }
+  #title-screen {
+    position: absolute;
+    inset: 0;
+    background: #0c0c10;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    z-index: 20;
+    pointer-events: auto;
+  }
+  #title-screen h1 {
+    font-size: 36px;
+    font-weight: 400;
+    letter-spacing: 0.35em;
+    color: #e8e0d4;
+  }
+  #title-screen .sub {
+    font-size: 14px;
+    color: #8a857a;
+    letter-spacing: 0.2em;
+  }
+  #title-screen button {
+    margin-top: 24px;
+    padding: 12px 36px;
+    background: transparent;
+    border: 1px solid #c4a574;
+    color: #c4a574;
+    font-size: 15px;
+    font-family: inherit;
+    letter-spacing: 0.2em;
+    cursor: pointer;
+  }
+  #title-screen button:hover {
+    background: rgba(196,165,116,0.12);
+  }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="titlebar">
+    <span><strong>無菌室</strong> · 第2關：起霧與失控</span>
+    <span id="scene-label">—</span>
+  </div>
+  <div id="stage">
+    <canvas id="cv" width="1280" height="720"></canvas>
+    <div id="hud">
+      <div id="objective"><div class="label">目標</div><div id="obj-text">—</div></div>
+      <div id="flags-hud"></div>
+      <div id="timer-hud">—</div>
+      <div id="prompt"><kbd>E</kbd><span id="prompt-text">互動</span></div>
+    </div>
+    <div id="dialogue">
+      <div class="speaker" id="dlg-speaker"></div>
+      <div class="text" id="dlg-text"></div>
+      <div class="hint">按 E / Space / Enter 繼續</div>
+    </div>
+    <div id="endcard">
+      <h1>舷梯口在霧裡。船橋還未到。</h1>
+      <p>第2關結束。<br/>下一章：第3關｜濃霧與低語</p>
+      <div class="seal">— 無菌室 · 第一卷 · 起霧與失控 —</div>
+      <a class="continue" href="level3.html">進入第3關</a>
+      <a class="continue" href="level1.html" style="margin-top:4px;opacity:0.7">回第1關</a>
+    </div>
+    <div id="failcard">
+      <h1>撞堤前的倒數歸零。</h1>
+      <p>霧還沒散。路徑還沒清完。<br/>可以重來——記得上一刻。</p>
+      <div class="seal">— soft-fail · 可重試 —</div>
+      <button class="retry" id="retry-btn">重試窄廊</button>
+    </div>
+    <div id="title-screen">
+      <h1>無菌室</h1>
+      <div class="sub">第2關：起霧與失控</div>
+      <div class="sub" style="margin-top:8px;letter-spacing:0.08em;font-size:12px;color:#5a564e">二層甲板 · 客艙休息區 · 霧壓近</div>
+      <button id="start-btn">開始</button>
+    </div>
+  </div>
+  <div id="controls-hint">移動 WASD / 方向鍵　互動 E / Space　對話繼續 E / Space / Enter</div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  const W = 1280, H = 720;
+  const TILE = 40;
+  const PLAYER_SIZE = 28;
+  const SPEED = 175;
+  const TIMER_MAX = 75;
+
+  const canvas = document.getElementById("cv");
+  const ctx = canvas.getContext("2d");
+  const objText = document.getElementById("obj-text");
+  const sceneLabel = document.getElementById("scene-label");
+  const flagsHud = document.getElementById("flags-hud");
+  const timerHud = document.getElementById("timer-hud");
+  const promptEl = document.getElementById("prompt");
+  const promptText = document.getElementById("prompt-text");
+  const dialogueEl = document.getElementById("dialogue");
+  const dlgSpeaker = document.getElementById("dlg-speaker");
+  const dlgText = document.getElementById("dlg-text");
+  const endcard = document.getElementById("endcard");
+  const failcard = document.getElementById("failcard");
+  const titleScreen = document.getElementById("title-screen");
+  const startBtn = document.getElementById("start-btn");
+  const retryBtn = document.getElementById("retry-btn");
+
+  const flags = {
+    noticedBlur: false,
+    heardWhisper: false,
+    sawImpact: false,
+    sawLockedDoor: false,
+    obstaclesCleared: 0,
+    cleared: false,
+  };
+
+  // Obstacle states for corridor (persist across soft-fail reset of timer only)
+  let obstacles = [];
+
+  let sceneId = "rest";
+  let player = { x: 200, y: 400, vx: 0, vy: 0 };
+  let keys = {};
+  let interactables = [];
+  let solids = [];
+  let nearby = null;
+  let dialogueQueue = [];
+  let inDialogue = false;
+  let gameStarted = false;
+  let lastTs = 0;
+  let animT = 0;
+  let pendingDialogueEnd = null;
+  let timerActive = false;
+  let timerLeft = TIMER_MAX;
+  let whisperT = 0;
+  let jitterAmp = 0;
+  let tiltAmp = 0;
+  let fogPulse = 0;
+  let impactTriggered = false;
+
+  const themes = {
+    rest:     { floor: "#1c2228", wall: "#2e3840", accent: "#3a4850", fog: "rgba(40,50,60,0.35)" },
+    corridor: { floor: "#1a1e24", wall: "#2a3038", accent: "#3a4048", fog: "rgba(50,55,65,0.42)" },
+  };
+
+  function setObjective(t) { objText.textContent = t; }
+  function setSceneLabel(t) { sceneLabel.textContent = t; }
+
+  function pathClear() {
+    return flags.obstaclesCleared >= 3;
+  }
+
+  function canExitAft() {
+    return pathClear();
+  }
+
+  function refreshFlagsHud() {
+    function mark(ok, label) {
+      return '<span class="' + (ok ? "ok" : "") + '">' + (ok ? "✓" : "·") + " " + label + "</span>";
+    }
+    const obs = flags.obstaclesCleared;
+    const obsOk = obs >= 3;
+    flagsHud.innerHTML = [
+      mark(flags.noticedBlur, "記得上一刻"),
+      mark(flags.heardWhisper, "低語"),
+      mark(flags.sawImpact, "撞擊"),
+      mark(flags.sawLockedDoor, "舵門卡死"),
+      '<span class="' + (obsOk ? "ok" : (obs > 0 ? "warn" : "")) + '">' +
+        (obsOk ? "✓" : "·") + " 清障 " + obs + "/3</span>",
+    ].join("<br/>");
+  }
+
+  function refreshTimerHud() {
+    if (!timerActive || flags.cleared) {
+      timerHud.style.display = "none";
+      return;
+    }
+    timerHud.style.display = "block";
+    const sec = Math.max(0, Math.ceil(timerLeft));
+    timerHud.textContent = "撞堤倒數 " + sec + "s";
+    if (sec <= 15) timerHud.classList.add("urgent");
+    else timerHud.classList.remove("urgent");
+  }
+
+  function showDialogue(lines) {
+    dialogueQueue = lines.slice();
+    inDialogue = true;
+    advanceDialogue();
+  }
+
+  function advanceDialogue() {
+    if (dialogueQueue.length === 0) {
+      dialogueEl.style.display = "none";
+      inDialogue = false;
+      onDialogueEnd();
+      return;
+    }
+    const line = dialogueQueue.shift();
+    dlgSpeaker.textContent = line.speaker || "";
+    dlgText.textContent = line.text;
+    dialogueEl.style.display = "block";
+  }
+
+  function onDialogueEnd() {
+    if (pendingDialogueEnd) {
+      const fn = pendingDialogueEnd;
+      pendingDialogueEnd = null;
+      fn();
+    }
+    updateObjective();
+    refreshFlagsHud();
+  }
+
+  function updateObjective() {
+    if (flags.cleared) {
+      setObjective("—");
+      return;
+    }
+    if (sceneId === "rest") {
+      if (!flags.noticedBlur) setObjective("霧壓近了。留意欄杆與警示牌——對比上一刻。");
+      else if (!flags.heardWhisper) setObjective("低語在耳邊。再走幾步，或再聽一次。");
+      else if (!flags.sawImpact) setObjective("船橋方向傳來撞擊……走近船首門廊。");
+      else if (!flags.sawLockedDoor) setObjective("看清實習船員鎖門——舵卡死了。");
+      else setObjective("經中央窄廊折返船尾舷梯。右側入口。");
+    } else if (sceneId === "corridor") {
+      if (!pathClear()) setObjective("搬開桌椅行李（" + flags.obstaclesCleared + "/3）。船體在傾。");
+      else setObjective("路徑已通——趕往船尾舷梯口。");
+    }
+  }
+
+  function rectsOverlap(a, b) {
+    return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+  }
+
+  function playerRect(px, py) {
+    return { x: px - PLAYER_SIZE / 2, y: py - PLAYER_SIZE / 2, w: PLAYER_SIZE, h: PLAYER_SIZE };
+  }
+
+  function blocked(px, py) {
+    const pr = playerRect(px, py);
+    for (const s of solids) {
+      if (s.cleared) continue;
+      if (rectsOverlap(pr, s)) return true;
+    }
+    if (px < 30 || px > W - 30 || py < 30 || py > H - 30) return true;
+    return false;
+  }
+
+  function dist(ax, ay, bx, by) {
+    const dx = ax - bx, dy = ay - by;
+    return Math.sqrt(dx * dx + dy * dy);
+  }
+
+  // ——— Scene: 客艙休息區／二層甲板 ———
+  function buildRest() {
+    sceneId = "rest";
+    setSceneLabel("二層甲板 · 客艙休息區");
+    player = { x: 220, y: 420, vx: 0, vy: 0 };
+    solids = [];
+    interactables = [];
+
+    solids.push({ x: 0, y: 0, w: W, h: 48, label: "wall" });
+    solids.push({ x: 0, y: H - 48, w: W, h: 48, label: "wall" });
+    solids.push({ x: 0, y: 0, w: 48, h: H, label: "wall" });
+    solids.push({ x: W - 48, y: 0, w: 48, h: H, label: "wall" });
+
+    // Sea railing (north)
+    solids.push({ x: 48, y: 48, w: W - 96, h: 36, label: "railing", color: "#3a4850" });
+
+    // Cabin / lounge furniture
+    solids.push({ x: 80, y: 200, w: 140, h: 90, label: "sofa", color: "#3a3438" });
+    solids.push({ x: 280, y: 220, w: 100, h: 70, label: "table", color: "#4a4038" });
+    solids.push({ x: 900, y: 480, w: 160, h: 100, label: "cabin", color: "#2a343c" });
+    solids.push({ x: 1000, y: 180, w: 100, h: 160, label: "funnel", color: "#4a3a30" });
+
+    // Bridge door area (north-east) — visual wall with door
+    solids.push({ x: 700, y: 100, w: 200, h: 80, label: "bridgeDoor", color: "#2a3038" });
+
+    // Railing interact (sweat)
+    interactables.push({
+      id: "railSweat",
+      x: 420, y: 120, r: 70,
+      label: "欄杆",
+      prompt: flags.noticedBlur ? "欄杆（已對比）" : "查看欄杆",
+      action: interactRailOrSign,
+    });
+
+    // Warning sign
+    interactables.push({
+      id: "sign",
+      x: 620, y: 160, r: 65,
+      label: "警示牌",
+      prompt: flags.noticedBlur ? "警示牌（字跡洇開）" : "查看警示牌",
+      action: interactRailOrSign,
+    });
+
+    // Whisper zone (after blur)
+    interactables.push({
+      id: "whisper",
+      x: 340, y: 380, r: 70,
+      label: "低語",
+      prompt: flags.heardWhisper ? "低語（殘響）" : "傾聽",
+      action: interactWhisper,
+    });
+
+    // Impact / locked door observation
+    interactables.push({
+      id: "bridgeView",
+      x: 780, y: 200, r: 75,
+      label: "船橋門廊",
+      prompt: flags.sawLockedDoor ? "鎖門（已見）" : (flags.sawImpact ? "查看鎖門" : "走近船橋門廊"),
+      action: interactBridge,
+    });
+
+    // NPCs flavor
+    interactables.push({
+      id: "ajie",
+      x: 180, y: 520, r: 55,
+      label: "阿傑",
+      prompt: "與阿傑交談",
+      action: function () {
+        showDialogue([
+          { speaker: "阿傑", text: flags.noticedBlur
+            ? "霧……不對。剛才還看得見對岸燈塔。"
+            : "相紙還在你袋裡吧？別弄濕。" },
+        ]);
+      },
+      isNpc: true,
+      color: "#6a8a70",
+    });
+    interactables.push({
+      id: "xuman",
+      x: 520, y: 500, r: 55,
+      label: "許曼",
+      prompt: "與許曼交談",
+      action: function () {
+        showDialogue([
+          { speaker: "許曼", text: flags.heardWhisper
+            ? "你也聽到了？像從鐵板縫裡滲出來的。"
+            : "袖口還扣着。霧氣潮，別讓皮膚受潮。" },
+        ]);
+      },
+      isNpc: true,
+      color: "#8a6a80",
+    });
+    interactables.push({
+      id: "zhou",
+      x: 680, y: 460, r: 55,
+      label: "周朗",
+      prompt: "與周朗交談",
+      action: function () {
+        showDialogue([
+          { speaker: "周朗", text: flags.sawImpact
+            ? "船橋那邊響了一下。別往前擠——往尾走。"
+            : "牙螺絲又鬆了。這種霧，視線靠不住。" },
+        ]);
+      },
+      isNpc: true,
+      color: "#6a7a90",
+    });
+
+    // Exit to corridor (right / aft-ish)
+    interactables.push({
+      id: "toCorridor",
+      x: W - 80, y: 380, r: 60,
+      label: "窄廊",
+      prompt: "進入中央窄廊",
+      action: tryEnterCorridor,
+      isExit: true,
+    });
+
+    updateObjective();
+    refreshFlagsHud();
+    refreshTimerHud();
+  }
+
+  // ——— Scene: 中央窄廊 ———
+  function buildCorridor(opts) {
+    opts = opts || {};
+    sceneId = "corridor";
+    setSceneLabel("中央窄廊 · 往船尾");
+    if (!opts.keepPlayer) {
+      player = { x: 120, y: 360, vx: 0, vy: 0 };
+    }
+    solids = [];
+    interactables = [];
+
+    solids.push({ x: 0, y: 0, w: W, h: 48, label: "wall" });
+    solids.push({ x: 0, y: H - 48, w: W, h: 48, label: "wall" });
+    solids.push({ x: 0, y: 0, w: 48, h: H, label: "wall" });
+    solids.push({ x: W - 48, y: 0, w: 48, h: H, label: "wall" });
+
+    // Narrow corridor walls (top and bottom thick)
+    solids.push({ x: 48, y: 48, w: W - 96, h: 160, label: "hull", color: "#2a3038" });
+    solids.push({ x: 48, y: 520, w: W - 96, h: 152, label: "hull", color: "#2a3038" });
+
+    // Mid-corridor walkable roughly y 220–500
+    // Obstacles: table, chairs, luggage — block mid path until cleared
+    if (!opts.resetObstacles && obstacles.length === 3) {
+      // reuse existing obstacle states
+    } else {
+      obstacles = [
+        { id: "obs1", x: 320, y: 300, w: 90, h: 70, label: "桌椅", color: "#4a4038", cleared: false },
+        { id: "obs2", x: 560, y: 340, w: 80, h: 80, label: "行李", color: "#3a3428", cleared: false },
+        { id: "obs3", x: 820, y: 290, w: 100, h: 75, label: "翻倒長椅", color: "#3a4038", cleared: false },
+      ];
+    }
+
+    for (const o of obstacles) {
+      solids.push(o);
+      if (!o.cleared) {
+        interactables.push({
+          id: o.id,
+          x: o.x + o.w / 2,
+          y: o.y + o.h / 2,
+          r: 75,
+          label: o.label,
+          prompt: "搬開" + o.label,
+          action: makeClearObstacle(o),
+          isObstacle: true,
+        });
+      }
+    }
+
+    // Sync cleared count
+    flags.obstaclesCleared = obstacles.filter(function (o) { return o.cleared; }).length;
+
+    interactables.push({
+      id: "backRest",
+      x: 90, y: 360, r: 55,
+      label: "回休息區",
+      prompt: "返回休息區",
+      action: function () {
+        fadeToScene(function () {
+          buildRest();
+          player.x = W - 140;
+          player.y = 380;
+        });
+      },
+      isExit: true,
+    });
+
+    interactables.push({
+      id: "aftGangway",
+      x: W - 90, y: 380, r: 65,
+      label: "船尾舷梯",
+      prompt: canExitAft() ? "抵達舷梯口" : "舷梯口（路未通）",
+      action: tryAftExit,
+      isExit: true,
+    });
+
+    // Start / resume timer when entering corridor after prerequisites
+    if (flags.sawLockedDoor && !flags.cleared) {
+      if (!timerActive) {
+        timerActive = true;
+        timerLeft = TIMER_MAX;
+      }
+    }
+
+    updateObjective();
+    refreshFlagsHud();
+    refreshTimerHud();
+  }
+
+  function makeClearObstacle(obs) {
+    return function () {
+      if (obs.cleared) return;
+      obs.cleared = true;
+      flags.obstaclesCleared = obstacles.filter(function (o) { return o.cleared; }).length;
+      // Remove from interactables
+      interactables = interactables.filter(function (it) { return it.id !== obs.id; });
+      const aft = interactables.find(function (i) { return i.id === "aftGangway"; });
+      if (aft && pathClear()) aft.prompt = "抵達舷梯口";
+
+      const lines = [
+        { speaker: "系統", text: "你把「" + obs.label + "」扳開。鐵腿刮過地板，刺耳。" },
+      ];
+      if (flags.obstaclesCleared < 3) {
+        lines.push({ speaker: "梁子安", text: "還有障礙。趕緊——船在傾。" });
+      } else {
+        lines.push({ speaker: "梁子安", text: "通路清了。往船尾。" });
+      }
+      showDialogue(lines);
+      updateObjective();
+      refreshFlagsHud();
+    };
+  }
+
+  // ——— Interactions ———
+  function interactRailOrSign() {
+    if (flags.noticedBlur) {
+      showDialogue([
+        { speaker: "梁子安", text: "欄杆還在「發汗」。警示牌字跡繼續洇——比上一刻更糊。" },
+      ]);
+      return;
+    }
+    flags.noticedBlur = true;
+    jitterAmp = 0.35;
+    const rail = interactables.find(function (i) { return i.id === "railSweat"; });
+    const sign = interactables.find(function (i) { return i.id === "sign"; });
+    if (rail) rail.prompt = "欄杆（已對比）";
+    if (sign) sign.prompt = "警示牌（字跡洇開）";
+    showDialogue([
+      { speaker: "系統", text: "欄杆涼，表面結着細珠——像鐵在出汗。" },
+      { speaker: "系統", text: "警示牌：「請勿……欄杆外側」。末兩字洇成一團墨。" },
+      { speaker: "梁子安", text: "記得上一刻。字是清楚的。燈塔也看得見。" },
+      { speaker: "梁子安", text: "現在——都不對了。" },
+    ]);
+  }
+
+  function interactWhisper() {
+    if (!flags.noticedBlur) {
+      showDialogue([
+        { speaker: "梁子安", text: "風聲？先看清欄杆那邊。" },
+      ]);
+      return;
+    }
+    if (flags.heardWhisper) {
+      showDialogue([
+        { speaker: "系統", text: "低語還在。像有人隔着鐵板念你的名字——又不是名字。" },
+      ]);
+      // brief jitter boost
+      jitterAmp = Math.max(jitterAmp, 0.55);
+      return;
+    }
+    flags.heardWhisper = true;
+    jitterAmp = 0.7;
+    whisperT = animT;
+    const w = interactables.find(function (i) { return i.id === "whisper"; });
+    if (w) w.prompt = "低語（殘響）";
+    showDialogue([
+      { speaker: "系統", text: "……安……靠……別……" },
+      { speaker: "梁子安", text: "誰在說話？" },
+      { speaker: "系統", text: "沒有人站在你身後。腳下的甲板卻微微一顫。" },
+      { speaker: "阿傑", text: "子安？你臉色不太對。" },
+    ]);
+    // After whisper, auto-arm impact when they approach bridge — or trigger soon
+    pendingDialogueEnd = function () {
+      // soft nudge: if they haven't seen impact, a delayed cue via objective
+      updateObjective();
+    };
+  }
+
+  function interactBridge() {
+    if (!flags.noticedBlur) {
+      showDialogue([
+        { speaker: "梁子安", text: "霧太濃。先搞清楚欄杆和牌子怎麼了。" },
+      ]);
+      return;
+    }
+    if (!flags.heardWhisper) {
+      showDialogue([
+        { speaker: "梁子安", text: "耳邊有聲音。先停一下，聽清楚。" },
+      ]);
+      return;
+    }
+    if (!flags.sawImpact) {
+      flags.sawImpact = true;
+      tiltAmp = 0.4;
+      showDialogue([
+        { speaker: "系統", text: "——轟。船橋方向一記鈍響，整層甲板斜了一下。" },
+        { speaker: "廣播", text: "（雜訊）……請乘客……勿……船橋……" },
+        { speaker: "梁子安", text: "撞擊？從上面來的。" },
+      ]);
+      pendingDialogueEnd = function () {
+        const bv = interactables.find(function (i) { return i.id === "bridgeView"; });
+        if (bv) bv.prompt = "查看鎖門";
+        updateObjective();
+        refreshFlagsHud();
+      };
+      return;
+    }
+    if (!flags.sawLockedDoor) {
+      flags.sawLockedDoor = true;
+      tiltAmp = 0.65;
+      showDialogue([
+        { speaker: "系統", text: "門廊玻璃後：一名實習船員死死頂着舵室門。門鎖已卡死。" },
+        { speaker: "實習船員", text: "舵……轉不動！別過來——快往船尾撤！" },
+        { speaker: "周朗", text: "別擠船橋。中央窄廊——折返舷梯。" },
+        { speaker: "梁子安", text: "知道了。" },
+      ]);
+      pendingDialogueEnd = function () {
+        const bv = interactables.find(function (i) { return i.id === "bridgeView"; });
+        if (bv) bv.prompt = "鎖門（已見）";
+        updateObjective();
+        refreshFlagsHud();
+      };
+      return;
+    }
+    showDialogue([
+      { speaker: "實習船員", text: "（隔着玻璃）快走！舵卡死了——" },
+    ]);
+  }
+
+  function tryEnterCorridor() {
+    if (!flags.sawLockedDoor) {
+      var tip = "還不能走。";
+      if (!flags.noticedBlur) tip = "霧裡有異樣。先對比欄杆與警示牌。";
+      else if (!flags.heardWhisper) tip = "低語未停。先聽清楚。";
+      else if (!flags.sawImpact) tip = "船橋方向不對勁。先過去看看。";
+      else tip = "先看清門廊裡發生了什麼。";
+      showDialogue([{ speaker: "梁子安", text: tip }]);
+      return;
+    }
+    showDialogue([
+      { speaker: "系統", text: "中央窄廊。桌椅行李橫七豎八。甲板在傾。" },
+    ]);
+    pendingDialogueEnd = function () {
+      fadeToScene(function () { buildCorridor({ resetObstacles: true }); });
+    };
+  }
+
+  function tryAftExit() {
+    if (!pathClear()) {
+      showDialogue([
+        { speaker: "梁子安", text: "路還沒清。障礙還堵着（" + flags.obstaclesCleared + "/3）。" },
+      ]);
+      return;
+    }
+    if (flags.cleared) return;
+    timerActive = false;
+    showDialogue([
+      { speaker: "系統", text: "船尾舷梯口。霧從縫裡湧進來，像活的。" },
+      { speaker: "梁子安", text: "還未上船橋。至少——這條路通了。" },
+      { speaker: "系統", text: "通關：異象已察 · 舵門已見 · 窄廊已清 · 抵達舷梯口。" },
+    ]);
+    pendingDialogueEnd = function () {
+      flags.cleared = true;
+      endcard.style.display = "flex";
+      refreshFlagsHud();
+      refreshTimerHud();
+      updateObjective();
+    };
+  }
+
+  function softFail() {
+    timerActive = false;
+    failcard.style.display = "flex";
+    refreshTimerHud();
+  }
+
+  function retryCorridor() {
+    failcard.style.display = "none";
+    // Reset obstacles and timer, stay in corridor
+    flags.obstaclesCleared = 0;
+    obstacles = [];
+    timerLeft = TIMER_MAX;
+    timerActive = true;
+    fadeToScene(function () {
+      buildCorridor({ resetObstacles: true });
+      player.x = 120;
+      player.y = 360;
+    });
+  }
+
+  // ——— Fade ———
+  let fading = false;
+  let fadeAlpha = 0;
+  let fadeDir = 0;
+  let fadeCallback = null;
+
+  function fadeToScene(builder) {
+    if (fading) return;
+    fading = true;
+    fadeDir = 1;
+    fadeCallback = builder;
+  }
+
+  function updateFade(dt) {
+    if (!fading) return;
+    fadeAlpha += fadeDir * dt * 2.5;
+    if (fadeDir > 0 && fadeAlpha >= 1) {
+      fadeAlpha = 1;
+      if (fadeCallback) {
+        fadeCallback();
+        fadeCallback = null;
+      }
+      fadeDir = -1;
+    } else if (fadeDir < 0 && fadeAlpha <= 0) {
+      fadeAlpha = 0;
+      fading = false;
+      fadeDir = 0;
+    }
+  }
+
+  // ——— Input ———
+  window.addEventListener("keydown", function (e) {
+    const k = e.key.toLowerCase();
+    keys[k] = true;
+    if (["arrowup","arrowdown","arrowleft","arrowright"," "].indexOf(e.key.toLowerCase()) >= 0 ||
+        e.key === " ") {
+      e.preventDefault();
+    }
+    if (!gameStarted) return;
+    if (failcard.style.display === "flex") return;
+    if (e.key === " " || k === "e" || k === "enter") {
+      if (inDialogue) {
+        e.preventDefault();
+        advanceDialogue();
+      } else if (!fading && endcard.style.display !== "flex") {
+        e.preventDefault();
+        tryInteract();
+      }
+    }
+  });
+  window.addEventListener("keyup", function (e) {
+    keys[e.key.toLowerCase()] = false;
+  });
+
+  startBtn.addEventListener("click", function () {
+    titleScreen.style.display = "none";
+    gameStarted = true;
+    buildRest();
+    showDialogue([
+      { speaker: "系統", text: "離岸之後。霧從船舷壓進來，視線縮成一條走廊。" },
+      { speaker: "梁子安", text: "欄杆……警示牌。記得上一刻它們是什麼樣子。" },
+    ]);
+  });
+
+  retryBtn.addEventListener("click", retryCorridor);
+
+  function tryInteract() {
+    if (!nearby) return;
+    nearby.action();
+  }
+
+  function findNearby() {
+    let best = null, bestD = Infinity;
+    for (const it of interactables) {
+      const d = dist(player.x, player.y, it.x, it.y);
+      if (d < it.r && d < bestD) {
+        best = it;
+        bestD = d;
+      }
+    }
+    return best;
+  }
+
+  // ——— Update / Draw ———
+  function update(dt) {
+    if (!gameStarted) return;
+    updateFade(dt);
+    animT += dt;
+    fogPulse = 0.5 + Math.sin(animT * 0.7) * 0.5;
+
+    if (jitterAmp > 0) {
+      jitterAmp = Math.max(0, jitterAmp - dt * 0.15);
+    }
+    if (flags.sawImpact) {
+      tiltAmp = Math.min(1, tiltAmp + dt * 0.05);
+    }
+
+    if (timerActive && !inDialogue && !fading && endcard.style.display !== "flex" &&
+        failcard.style.display !== "flex") {
+      timerLeft -= dt;
+      refreshTimerHud();
+      if (timerLeft <= 0) {
+        timerLeft = 0;
+        softFail();
+        return;
+      }
+    }
+
+    if (inDialogue || fading || endcard.style.display === "flex" || failcard.style.display === "flex") {
+      nearby = null;
+      promptEl.style.display = "none";
+      return;
+    }
+
+    let mx = 0, my = 0;
+    if (keys["w"] || keys["arrowup"]) my -= 1;
+    if (keys["s"] || keys["arrowdown"]) my += 1;
+    if (keys["a"] || keys["arrowleft"]) mx -= 1;
+    if (keys["d"] || keys["arrowright"]) mx += 1;
+
+    // Whisper / key noise: brief axis flip or jitter
+    if (flags.heardWhisper && jitterAmp > 0.2) {
+      if (Math.sin(animT * 11) > 0.92) {
+        const tmp = mx; mx = -my * 0.3; my = tmp * 0.3;
+      }
+    }
+
+    if (mx !== 0 || my !== 0) {
+      const len = Math.sqrt(mx * mx + my * my);
+      mx /= len; my /= len;
+      let jx = 0, jy = 0;
+      if (jitterAmp > 0) {
+        jx = Math.sin(animT * 23) * jitterAmp * 40 * dt;
+        jy = Math.cos(animT * 19) * jitterAmp * 40 * dt;
+      }
+      const nx = player.x + mx * SPEED * dt + jx;
+      const ny = player.y + my * SPEED * dt + jy;
+      if (!blocked(nx, player.y)) player.x = nx;
+      if (!blocked(player.x, ny)) player.y = ny;
+    }
+
+    nearby = findNearby();
+    if (nearby) {
+      promptText.textContent = nearby.prompt;
+      const rect = canvas.getBoundingClientRect();
+      const stage = document.getElementById("stage").getBoundingClientRect();
+      const sx = (nearby.x / W) * rect.width + (rect.left - stage.left);
+      const sy = (nearby.y / H) * rect.height + (rect.top - stage.top) - 20;
+      promptEl.style.left = sx + "px";
+      promptEl.style.top = sy + "px";
+      promptEl.style.display = "block";
+    } else {
+      promptEl.style.display = "none";
+    }
+  }
+
+  function draw() {
+    const theme = themes[sceneId] || themes.rest;
+
+    // Ship tilt: subtle canvas transform
+    ctx.save();
+    const tilt = Math.sin(animT * 0.9) * 0.012 * tiltAmp + (flags.sawImpact ? 0.008 * tiltAmp : 0);
+    ctx.translate(W / 2, H / 2);
+    ctx.rotate(tilt);
+    ctx.translate(-W / 2, -H / 2);
+
+    ctx.fillStyle = theme.floor;
+    ctx.fillRect(0, 0, W, H);
+
+    ctx.strokeStyle = "rgba(255,255,255,0.03)";
+    ctx.lineWidth = 1;
+    for (let x = 0; x < W; x += TILE) {
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+    }
+    for (let y = 0; y < H; y += TILE) {
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+    }
+
+    if (sceneId === "rest") {
+      // Sea beyond railing
+      ctx.fillStyle = "#101820";
+      ctx.fillRect(48, 48, W - 96, 40);
+      ctx.fillStyle = "rgba(80,120,140," + (0.08 + fogPulse * 0.06) + ")";
+      ctx.fillRect(48, 52, W - 96, 12);
+    }
+
+    for (const s of solids) {
+      if (s.cleared) continue;
+      if (s.label === "wall" || s.label === "hull") {
+        ctx.fillStyle = theme.wall;
+      } else {
+        ctx.fillStyle = s.color || theme.accent;
+      }
+      ctx.fillRect(s.x, s.y, s.w, s.h);
+      ctx.strokeStyle = "rgba(0,0,0,0.35)";
+      ctx.strokeRect(s.x + 0.5, s.y + 0.5, s.w - 1, s.h - 1);
+    }
+
+    ctx.font = "12px sans-serif";
+    ctx.fillStyle = "rgba(200,190,170,0.45)";
+    ctx.textAlign = "center";
+    for (const s of solids) {
+      if (s.cleared) continue;
+      if (s.label === "railing") ctx.fillText("欄杆", s.x + s.w / 2, s.y + s.h / 2 + 4);
+      else if (s.label === "sofa") ctx.fillText("沙發", s.x + s.w / 2, s.y + s.h / 2 + 4);
+      else if (s.label === "table") ctx.fillText("茶几", s.x + s.w / 2, s.y + s.h / 2 + 4);
+      else if (s.label === "cabin") ctx.fillText("客艙壁", s.x + s.w / 2, s.y + s.h / 2 + 4);
+      else if (s.label === "funnel") ctx.fillText("煙囪", s.x + s.w / 2, s.y + s.h / 2 + 4);
+      else if (s.label === "bridgeDoor") ctx.fillText("船橋門廊", s.x + s.w / 2, s.y + s.h / 2 + 4);
+      else if (s.label === "桌椅" || s.label === "行李" || s.label === "翻倒長椅") {
+        ctx.fillStyle = "rgba(220,180,140,0.7)";
+        ctx.fillText(s.label, s.x + s.w / 2, s.y + s.h / 2 + 4);
+        ctx.fillStyle = "rgba(200,190,170,0.45)";
+      }
+    }
+
+    // Rest scene details
+    if (sceneId === "rest") {
+      // Sweating railing beads
+      if (flags.noticedBlur) {
+        ctx.fillStyle = "rgba(160,180,190,0.55)";
+        for (let i = 0; i < 6; i++) {
+          const bx = 380 + i * 18;
+          const by = 95 + Math.sin(animT * 2 + i) * 2;
+          ctx.beginPath();
+          ctx.ellipse(bx, by, 3, 4 + Math.sin(animT + i), 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      // Warning sign
+      ctx.fillStyle = flags.noticedBlur ? "#5a4030" : "#4a5040";
+      ctx.fillRect(590, 120, 60, 50);
+      ctx.fillStyle = flags.noticedBlur ? "rgba(180,140,100,0.35)" : "rgba(200,190,160,0.7)";
+      ctx.font = "10px sans-serif";
+      ctx.fillText(flags.noticedBlur ? "〰〰" : "警示", 620, 148);
+
+      // Locked door glow after impact
+      if (flags.sawLockedDoor) {
+        ctx.strokeStyle = "rgba(196,100,100," + (0.35 + Math.sin(animT * 4) * 0.2) + ")";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(720, 110, 160, 60);
+        // Trainee silhouette
+        drawPerson(800, 155, "實習船員", "#7a6050", false);
+      } else if (flags.sawImpact) {
+        ctx.fillStyle = "rgba(180,80,60,0.25)";
+        ctx.fillRect(710, 105, 180, 70);
+      }
+
+      // Exit mark
+      ctx.fillStyle = "#4a4030";
+      ctx.fillRect(W - 48, H / 2 - 50, 48, 120);
+      ctx.fillStyle = "#c4a574";
+      ctx.font = "13px sans-serif";
+      ctx.fillText("窄廊", W - 24, H / 2 + 20);
+    }
+
+    if (sceneId === "corridor") {
+      // Cleared obstacle ghosts
+      for (const o of obstacles) {
+        if (o.cleared) {
+          ctx.strokeStyle = "rgba(196,165,116,0.25)";
+          ctx.setLineDash([4, 4]);
+          ctx.strokeRect(o.x, o.y, o.w, o.h);
+          ctx.setLineDash([]);
+          ctx.fillStyle = "rgba(196,165,116,0.3)";
+          ctx.font = "11px sans-serif";
+          ctx.fillText("已搬開", o.x + o.w / 2, o.y + o.h / 2 + 4);
+        }
+      }
+
+      // Aft exit mark
+      ctx.fillStyle = "#4a4030";
+      ctx.fillRect(W - 48, 300, 48, 140);
+      ctx.fillStyle = pathClear()
+        ? "rgba(196,165,116," + (0.5 + Math.sin(animT * 3) * 0.3) + ")"
+        : "#7a756c";
+      ctx.font = "12px sans-serif";
+      ctx.fillText("舷梯", W - 24, 380);
+
+      ctx.fillStyle = "#4a4030";
+      ctx.fillRect(48, 300, 40, 140);
+      ctx.fillStyle = "#c4a574";
+      ctx.fillText("休息區", 68, 380);
+
+      if (pathClear()) {
+        ctx.strokeStyle = "rgba(196,165,116," + (0.4 + Math.sin(animT * 3) * 0.2) + ")";
+        ctx.lineWidth = 2;
+        ctx.setLineDash([6, 4]);
+        ctx.strokeRect(W - 140, 300, 90, 140);
+        ctx.setLineDash([]);
+      }
+    }
+
+    // NPCs
+    for (const it of interactables) {
+      if (it.isNpc) {
+        drawPerson(it.x, it.y, it.label, it.color || "#8a7a60");
+      }
+    }
+
+    drawPerson(player.x, player.y, "梁子安", "#c4a574", true);
+
+    // Fog overlay — denser when noticedBlur
+    const fogA = flags.noticedBlur ? 0.28 + fogPulse * 0.12 : 0.18 + fogPulse * 0.08;
+    ctx.fillStyle = "rgba(55,65,75," + fogA + ")";
+    ctx.fillRect(0, 0, W, H);
+
+    // Vignette (vision compressed by fog)
+    const g = ctx.createRadialGradient(player.x, player.y, 80, player.x, player.y, flags.noticedBlur ? 420 : 560);
+    g.addColorStop(0, "rgba(0,0,0,0)");
+    g.addColorStop(1, "rgba(4,6,10," + (flags.noticedBlur ? 0.72 : 0.45) + ")");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+
+    // Whisper visual noise
+    if (flags.heardWhisper && jitterAmp > 0.15) {
+      ctx.fillStyle = "rgba(180,170,150," + (jitterAmp * 0.08) + ")";
+      for (let i = 0; i < 12; i++) {
+        const rx = (Math.sin(animT * 7 + i * 3) * 0.5 + 0.5) * W;
+        const ry = (Math.cos(animT * 5 + i * 2) * 0.5 + 0.5) * H;
+        ctx.fillRect(rx, ry, 2, 2);
+      }
+    }
+
+    ctx.restore();
+
+    if (fadeAlpha > 0) {
+      ctx.fillStyle = "rgba(0,0,0," + fadeAlpha + ")";
+      ctx.fillRect(0, 0, W, H);
+    }
+  }
+
+  function drawPerson(x, y, name, color, isPlayer) {
+    ctx.fillStyle = "rgba(0,0,0,0.35)";
+    ctx.beginPath();
+    ctx.ellipse(x, y + 14, 14, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(x, y, isPlayer ? 14 : 13, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = isPlayer ? "#1a1814" : "#1a1a1a";
+    ctx.beginPath();
+    ctx.arc(x, y, 6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = isPlayer ? "#e8e0d4" : "rgba(200,190,170,0.85)";
+    ctx.font = "12px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(name, x, y - 20);
+  }
+
+  function loop(ts) {
+    if (!lastTs) lastTs = ts;
+    const dt = Math.min(0.05, (ts - lastTs) / 1000);
+    lastTs = ts;
+    update(dt);
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
