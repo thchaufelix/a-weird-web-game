@@ -342,7 +342,7 @@
   let sofaPushed = false;
   let doorClosed = false;
   let failReason = "";
-  let autoAreaBeatDone = false; // after aliens appear, one auto beat when party enters door area
+  let autoAreaBeatDone = false; // after aliens appear, one auto beat once 許曼 is past iron door (right)
 
   // Companions (world entities, not only interactables)
   let xuman = { x: 520, y: 420, following: false };
@@ -447,7 +447,7 @@
     } else if (!flags.escorting) {
       setObjective("引導許曼（她移動變慢）。用家具／鐵門阻隔下層通道的東西。");
     } else if (!flags.blockedRoute) {
-      setObjective("搬沙發堵下層通道口，或靠近鐵門（會自動關）——再帶許曼往安全角。");
+      setObjective("搬沙發堵下層通道口，或帶許曼過鐵門（過門後會自動關）——再往安全角。");
     } else if (!flags.xumanSafe || !inSafe(player.x, player.y)) {
       setObjective("阻隔生效中。帶許曼到右上安全角／下層走廊口附近。");
     } else if (!flags.ajieBroke) {
@@ -568,7 +568,7 @@
       if (it.id === "ironDoor") {
         it.prompt = (blockTimer > 0 && blockKind === "鐵門")
           ? "鐵門（已關）"
-          : (chaseActive ? "鐵門（進區自動關）" : "關上鐵門");
+          : (chaseActive ? "鐵門（許曼過門後自動關）" : "關上鐵門");
       }
       if (it.id === "xuman") {
         if (flags.xumanSafe) it.prompt = "許曼（已到安全角）";
@@ -986,10 +986,10 @@
     }
   }
 
-  // Door-approach / safe-wing area — auto iron door + one interaction after aliens appear
-  function inDoorArea(x, y) {
-    // near iron door gap / approach to safe wing
-    return x >= 760 && x <= 980 && y >= 160 && y <= 420;
+  // 許曼 past iron door on the right (safe-wing side) — auto iron door + one interaction
+  function xumanPastIronDoor() {
+    // door solid is CHOKE_DOOR; right of it = through toward safe wing
+    return xuman.x > CHOKE_DOOR.x + CHOKE_DOOR.w;
   }
 
   function triggerAutoAreaBeat() {
@@ -1312,8 +1312,8 @@
     updateAliens(dt);
     syncNpcInteractables();
 
-    // After aliens appear: entering door area once → auto iron-door close + one interaction
-    if (chaseActive && !autoAreaBeatDone && !flags.cleared && inDoorArea(player.x, player.y)) {
+    // After aliens appear: once 許曼 has walked right through the iron door → auto close + one interaction
+    if (chaseActive && !autoAreaBeatDone && !flags.cleared && xumanPastIronDoor()) {
       triggerAutoAreaBeat();
       nearby = null;
       promptEl.style.display = "none";
