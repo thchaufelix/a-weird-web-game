@@ -19,13 +19,14 @@
    * gangway / deck sit near the pier / ferry for L1 ship scenes.
    */
   var MARKERS = {
-    office:    { x: 0.20, y: 0.24, label: "舊區辦事處" },
-    breakfast: { x: 0.50, y: 0.48, label: "騎樓早餐店" },
-    clinic:    { x: 0.80, y: 0.22, label: "診所" },
-    pier:      { x: 0.18, y: 0.56, label: "舊區碼頭" },
-    gangway:   { x: 0.30, y: 0.54, label: "登船舷梯" },
-    deck:      { x: 0.38, y: 0.46, label: "二層露天甲板" },
-    home:      { x: 0.50, y: 0.86, label: "梁子安／阿傑／許曼家" }
+    // Tuned to painted label plates / building centres on old-district-map.
+    office:    { x: 0.17, y: 0.26, label: "舊區辦事處" },
+    breakfast: { x: 0.48, y: 0.40, label: "騎樓早餐店" },
+    clinic:    { x: 0.79, y: 0.17, label: "診所" },
+    pier:      { x: 0.14, y: 0.62, label: "舊區碼頭" },
+    gangway:   { x: 0.22, y: 0.58, label: "登船舷梯" },
+    deck:      { x: 0.28, y: 0.52, label: "二層露天甲板" },
+    home:      { x: 0.55, y: 0.82, label: "梁子安／阿傑／許曼家" }
   };
 
   var DEFAULT_MS = 3000;
@@ -312,7 +313,7 @@
     var b = marker(toId);
     img.src = MAP_IMAGE;
     caption.textContent =
-      (a ? a.label : fromId || "?") + "  →  " + (b ? b.label : toId || "?");
+      "由「" + (a ? a.label : fromId || "?") + "」前往「" + (b ? b.label : toId || "?") + "」";
 
     function afterLayout() {
       drawOverlay(fromId, toId, ms);

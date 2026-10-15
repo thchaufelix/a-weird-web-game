@@ -354,6 +354,12 @@
     clinic:   { floor: "#1c2228", wall: "#2a343c", accent: "#3a4850", fog: "rgba(20,30,40,0.18)" },
   };
 
+  // Prologue map order (no return trips): 辦事處→早餐店, then 早餐店→診所.
+  const PROLOGUE_MAP = {
+    toBreakfast: { from: "office", to: "breakfast" },
+    toClinic:    { from: "breakfast", to: "clinic" },
+  };
+
   function setObjective(t) { objText.textContent = t; }
   function setSceneLabel(t) { sceneLabel.textContent = t; }
 
@@ -647,13 +653,13 @@
       showDialogue([
         { speaker: "梁子安", text: "墨斑還在腦裡。出去透透氣也好。" },
       ]);
-      pendingDialogueEnd = function () { fadeToScene(buildBreakfast, "office", "breakfast"); };
+      pendingDialogueEnd = function () { fadeToScene(buildBreakfast, PROLOGUE_MAP.toBreakfast.from, PROLOGUE_MAP.toBreakfast.to); };
       return;
     }
     showDialogue([
       { speaker: "梁子安", text: "單據上寫什麼，那就是什麼——他說得那麼篤定。" },
     ]);
-    pendingDialogueEnd = function () { fadeToScene(buildBreakfast, "office", "breakfast"); };
+    pendingDialogueEnd = function () { fadeToScene(buildBreakfast, PROLOGUE_MAP.toBreakfast.from, PROLOGUE_MAP.toBreakfast.to); };
   }
 
   function interactWindowSeat() {
@@ -702,7 +708,10 @@
     showDialogue([
       { speaker: "梁子安", text: "該去診所了。儀器總會說「正常」。" },
     ]);
-    pendingDialogueEnd = function () { fadeToScene(buildClinic, "breakfast", "clinic"); };
+    pendingDialogueEnd = function () {
+      // Locked: second map transition is 騎樓早餐店 → 診所.
+      fadeToScene(buildClinic, PROLOGUE_MAP.toClinic.from, PROLOGUE_MAP.toClinic.to);
+    };
   }
 
   function interactDoctor() {
@@ -754,6 +763,14 @@
   function fadeToScene(builder, mapFrom, mapTo) {
     if (fading) return;
     if (window.SterileMapTransition && window.SterileMapTransition.isActive()) return;
+    // Prefer live sceneId as map "from" when it is a known marker — keeps routes honest
+    // if a call site hardcodes a stale origin (e.g. office→clinic while still at breakfast).
+    if (mapFrom && mapTo && sceneId && sceneId !== mapFrom) {
+      var known = { office: 1, breakfast: 1, clinic: 1 };
+      if (known[sceneId] && known[mapFrom]) {
+        mapFrom = sceneId;
+      }
+    }
     function startFade() {
       fading = true;
       fadeDir = 1;
