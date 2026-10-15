@@ -290,6 +290,7 @@
 </div>
 
 <script src="touch-controls.js"></script>
+<script src="sprites.js"></script>
 <script>
 (function () {
   "use strict";
@@ -1210,15 +1211,26 @@
     }
   }
 
-  function drawPerson(x, y, name, color, isPlayer) {
+  function drawPerson(x, y, name, color, isPlayer, wounded, key) {
+    if (window.SterileSprites) {
+      SterileSprites.drawPerson(ctx, x, y, name, color, isPlayer, wounded, key);
+      return;
+    }
+    // fallback placeholder
     ctx.fillStyle = "rgba(0,0,0,0.35)";
     ctx.beginPath();
     ctx.ellipse(x, y + 14, 14, 6, 0, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = color;
+    ctx.fillStyle = color || "#8a7a60";
     ctx.beginPath();
     ctx.arc(x, y, isPlayer ? 14 : 13, 0, Math.PI * 2);
     ctx.fill();
+    if (wounded) {
+      ctx.fillStyle = "rgba(200,210,180,0.65)";
+      ctx.beginPath();
+      ctx.ellipse(x + 10, y + 2, 4, 6, 0.3, 0, Math.PI * 2);
+      ctx.fill();
+    }
     ctx.fillStyle = isPlayer ? "#1a1814" : "#1a1a1a";
     ctx.beginPath();
     ctx.arc(x, y, 6, 0, Math.PI * 2);
