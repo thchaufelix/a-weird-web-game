@@ -264,6 +264,7 @@
 </div>
 
 <script src="touch-controls.js"></script>
+<script src="map-transition.js"></script>
 <script>
 (function () {
   "use strict";
@@ -543,7 +544,7 @@
             buildPier();
             player.x = W - 140;
             player.y = H / 2 + 20;
-          });
+          }, "gangway", "pier");
         };
       },
       isExit: true,
@@ -638,7 +639,7 @@
       label: "舷梯",
       prompt: "返回舷梯",
       action: function () {
-        fadeToScene(buildGangway);
+        fadeToScene(buildGangway, "deck", "gangway");
       },
       isExit: true,
     });
@@ -733,7 +734,7 @@
     showDialogue([
       { speaker: "梁子安", text: "船票齊、人齊。上舷梯。" },
     ]);
-    pendingDialogueEnd = function () { fadeToScene(buildGangway); };
+    pendingDialogueEnd = function () { fadeToScene(buildGangway, "pier", "gangway"); };
   }
 
   function interactRust() {
@@ -764,7 +765,7 @@
     showDialogue([
       { speaker: "系統", text: "二層露天甲板。風比碼頭乾淨一點——也只是一點。" },
     ]);
-    pendingDialogueEnd = function () { fadeToScene(buildDeck); };
+    pendingDialogueEnd = function () { fadeToScene(buildDeck, "gangway", "deck"); };
   }
 
   function interactAjiePhoto() {
@@ -823,11 +824,28 @@
   let fadeDir = 0;
   let fadeCallback = null;
 
-  function fadeToScene(builder) {
+  function fadeToScene(builder, mapFrom, mapTo) {
     if (fading) return;
-    fading = true;
-    fadeDir = 1;
-    fadeCallback = builder;
+    if (window.SterileMapTransition && window.SterileMapTransition.isActive()) return;
+    function startFade() {
+      fading = true;
+      fadeDir = 1;
+      fadeCallback = builder;
+    }
+    if (mapFrom && mapTo && window.SterileMapTransition) {
+      SterileMapTransition.show({
+        from: mapFrom,
+        to: mapTo,
+        duration: 1200,
+        onDone: startFade
+      });
+    } else {
+      startFade();
+    }
+  }
+
+  function mapBlocking() {
+    return window.SterileMapTransition && SterileMapTransition.isActive();
   }
 
   function updateFade(dt) {
@@ -857,7 +875,10 @@
     }
     if (!gameStarted) return;
     if (e.key === " " || k === "e" || k === "enter") {
-      if (inDialogue) {
+      if (mapBlocking()) {
+        e.preventDefault();
+        SterileMapTransition.tryDismiss();
+      } else if (inDialogue) {
         e.preventDefault();
         advanceDialogue();
       } else if (!fading && endcard.style.display !== "flex") {
@@ -875,7 +896,8 @@
       keys: keys,
       onInteractDown: function () {
         if (!gameStarted) return;
-        if (inDialogue) advanceDialogue();
+        if (mapBlocking()) SterileMapTransition.tryDismiss();
+        else if (inDialogue) advanceDialogue();
         else if (!fading && endcard.style.display !== "flex") tryInteract();
       }
     });

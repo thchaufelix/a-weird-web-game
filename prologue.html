@@ -296,6 +296,7 @@
 </div>
 
 <script src="touch-controls.js"></script>
+<script src="map-transition.js"></script>
 <script>
 (function () {
   "use strict";
@@ -646,13 +647,13 @@
       showDialogue([
         { speaker: "梁子安", text: "墨斑還在腦裡。出去透透氣也好。" },
       ]);
-      pendingDialogueEnd = function () { fadeToScene(buildBreakfast); };
+      pendingDialogueEnd = function () { fadeToScene(buildBreakfast, "office", "breakfast"); };
       return;
     }
     showDialogue([
       { speaker: "梁子安", text: "單據上寫什麼，那就是什麼——他說得那麼篤定。" },
     ]);
-    pendingDialogueEnd = function () { fadeToScene(buildBreakfast); };
+    pendingDialogueEnd = function () { fadeToScene(buildBreakfast, "office", "breakfast"); };
   }
 
   function interactWindowSeat() {
@@ -701,7 +702,7 @@
     showDialogue([
       { speaker: "梁子安", text: "該去診所了。儀器總會說「正常」。" },
     ]);
-    pendingDialogueEnd = function () { fadeToScene(buildClinic); };
+    pendingDialogueEnd = function () { fadeToScene(buildClinic, "breakfast", "clinic"); };
   }
 
   function interactDoctor() {
@@ -750,11 +751,28 @@
   let fadeDir = 0;
   let fadeCallback = null;
 
-  function fadeToScene(builder) {
+  function fadeToScene(builder, mapFrom, mapTo) {
     if (fading) return;
-    fading = true;
-    fadeDir = 1;
-    fadeCallback = builder;
+    if (window.SterileMapTransition && window.SterileMapTransition.isActive()) return;
+    function startFade() {
+      fading = true;
+      fadeDir = 1;
+      fadeCallback = builder;
+    }
+    if (mapFrom && mapTo && window.SterileMapTransition) {
+      SterileMapTransition.show({
+        from: mapFrom,
+        to: mapTo,
+        duration: 1200,
+        onDone: startFade
+      });
+    } else {
+      startFade();
+    }
+  }
+
+  function mapBlocking() {
+    return window.SterileMapTransition && SterileMapTransition.isActive();
   }
 
   function updateFade(dt) {
@@ -784,7 +802,10 @@
     }
     if (!gameStarted) return;
     if (e.key === " " || k === "e" || k === "enter") {
-      if (inDialogue) {
+      if (mapBlocking()) {
+        e.preventDefault();
+        SterileMapTransition.tryDismiss();
+      } else if (inDialogue) {
         e.preventDefault();
         advanceDialogue();
       } else if (!phoneOpen && !fading && endcard.style.display !== "flex") {
@@ -802,7 +823,8 @@
       keys: keys,
       onInteractDown: function () {
         if (!gameStarted) return;
-        if (inDialogue) advanceDialogue();
+        if (mapBlocking()) SterileMapTransition.tryDismiss();
+        else if (inDialogue) advanceDialogue();
         else if (!phoneOpen && !fading && endcard.style.display !== "flex") tryInteract();
       }
     });
