@@ -53,3 +53,9 @@
 Run: `python3 _gen_sprites.py`
 
 Regenerates all idle and walk sheets plus this README.
+
+## Pages / GitHub delivery
+
+Binary `.png` sheets live in this folder locally. On GitHub Pages the loader also accepts
+`{id}-idle-8dir.png.b64` / `{id}-walk-8dir.png.b64` (raw base64, no data-URL prefix)
+when the PNG itself is missing — see `sprites.js`.
