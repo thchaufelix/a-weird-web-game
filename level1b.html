@@ -302,7 +302,7 @@
     cleared: false,
   };
 
-  let player = { x: 420, y: 420, vx: 0, vy: 0 };
+  let player = { x: 420, y: 480, vx: 0, vy: 0 };
   let keys = {};
   let interactables = [];
   let solids = [];
@@ -446,6 +446,9 @@
   }
 
   function buildDeck() {
+    // Spawn south of inner bench so opening is never stuck in solid
+    player.x = 420;
+    player.y = 480;
     setSceneLabel("二層露天甲板 · 離岸後");
     solids = [];
     solids.push({ x: 0, y: 0, w: W, h: 48, label: "wall" });
@@ -517,6 +520,27 @@
     rebuildPrompts();
     refreshFlagsHud();
     updateObjective();
+
+    // If somehow still overlapping a solid, nudge out (prefer vertical)
+    if (blocked(player.x, player.y)) {
+      const tryOffsets = [0, -20, 20, -40, 40, -60, 60, -80, 80];
+      let freed = false;
+      for (const dy of tryOffsets) {
+        if (!blocked(player.x, player.y + dy)) {
+          player.y += dy;
+          freed = true;
+          break;
+        }
+      }
+      if (!freed) {
+        for (const dx of tryOffsets) {
+          if (!blocked(player.x + dx, player.y)) {
+            player.x += dx;
+            break;
+          }
+        }
+      }
+    }
   }
 
   function interactXuman() {
