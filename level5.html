@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-<title>無菌室 · 第5關：游絲與歸位</title>
+<title>無菌室 · 第6關：游絲與歸位</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body {
@@ -265,7 +265,7 @@
 <body>
 <div id="wrap">
   <div id="titlebar">
-    <span><strong>無菌室</strong> · 第5關：游絲與歸位</span>
+    <span><strong>無菌室</strong> · 第6關：游絲與歸位</span>
     <span id="scene-label">—</span>
   </div>
   <div id="stage">
@@ -287,13 +287,13 @@
     </div>
     <div id="endcard">
       <h1>游絲歸位。</h1>
-      <p>第5關結束。<br/>迷霧蒸發。手還在抖——但船穩了。<br/>下一章：第6關｜常識與壞軌</p>
+      <p>第6關結束。<br/>迷霧蒸發。手還在抖——但船穩了。<br/>下一章：第7關｜常識與壞軌</p>
       <div class="seal">— 無菌室 · 第一卷 · 游絲與歸位 —</div>
-      <a class="continue" href="level6.html">進入第6關</a>
+      <a class="continue" href="level6.html">進入第7關</a>
     </div>
     <div id="title-screen">
       <h1>無菌室</h1>
-      <div class="sub">第5關：游絲與歸位</div>
+      <div class="sub">第6關：游絲與歸位</div>
       <div class="sub" style="margin-top:8px;letter-spacing:0.08em;font-size:12px;color:#5a564e">船橋駕駛室 · 側傾地板 · 金屬連桿</div>
       <button id="start-btn">開始</button>
     </div>
@@ -507,13 +507,13 @@
     if (!flags.backlashDone) {
       showDialogue([
         { speaker: "許曼", text: "你的手……在抖。" },
-        { speaker: "梁子安", text: "反噬。等它過去。" },
+        { speaker: "梁子安", text: "……站一下就好。" },
       ]);
       return;
     }
     showDialogue([
-      { speaker: "許曼", text: "霧散了。外面……像被什麼規律按回去一樣。" },
-      { speaker: "梁子安", text: "規律。先靠岸——再說。" },
+      { speaker: "許曼", text: "霧散了。外面……安靜得不像剛才。" },
+      { speaker: "梁子安", text: "下去。找阿傑。相紙還在。" },
     ]);
   }
 
@@ -545,7 +545,7 @@
   function interactLink() {
     if (flags.anchored) {
       showDialogue([
-        { speaker: "系統", text: "游絲已歸位。金屬座微微發熱，像剛被什麼規矩摸過。" },
+        { speaker: "系統", text: "游絲已歸位。金屬座微微發熱。" },
       ]);
       return;
     }
@@ -567,11 +567,17 @@
     refreshFlagsHud();
     updateObjective();
     showDialogue([
-      { speaker: "系統", text: "——咔。游絲歸位。" },
-      { speaker: "系統", text: "迷霧像被抽走一樣變薄。異象停了。船橋裡只剩金屬冷卻的聲音。" },
-      { speaker: "梁子安", text: "（手突然抖）……這是規律。" },
-      { speaker: "許曼", text: "（門框外）子安？你還好嗎？" },
-      { speaker: "梁子安", text: "反噬。站一下就好。" },
+      { speaker: "系統", text: "——嗒。游絲彈回圓心。" },
+      { speaker: "系統", text: "舵機咬合轟鳴。船在礁石邊緣甩尾。濃霧像滴進酸裡一樣蒸發。" },
+      { speaker: "系統", text: "滲油停了。下層的抓撓聲沒了。陽光重新落在甲板上。" },
+      { speaker: "系統", text: "你脫力。頭痛砸下來。右手開始劇烈抽搐。" },
+      { speaker: "許曼", text: "（衝進來扶住你）子安——！" },
+      { speaker: "梁子安", text: "……" },
+      { speaker: "系統", text: "你盯著恢復平穩的羅盤，又盯著發抖的手指。喉嚨像被什麼輕輕勒住。" },
+      { speaker: "系統", text: "你把痙攣的右手慢慢按在膝蓋上，指尖扣住布料，強迫自己把視線從羅盤上移開。" },
+      { speaker: "許曼", text: "……還站得住嗎？" },
+      { speaker: "梁子安", text: "（極輕）……先靠岸。" },
+      { speaker: "系統", text: "海風從破裂舷窗灌進來。柴油與鹽。只剩船員微弱的抽搐聲，和你自己的呼吸。" },
     ]);
     pendingDialogueEnd = function () {
       flags.backlash = true;
@@ -588,10 +594,8 @@
     refreshFlagsHud();
     updateObjective();
     showDialogue([
-      { speaker: "系統", text: "手抖漸漸收斂。側腰石灰傷還在，但腳底穩了。" },
-      { speaker: "許曼", text: "霧散了。我們……可以靠岸了嗎？" },
-      { speaker: "梁子安", text: "可以。下去——找阿傑。相紙還在。" },
-      { speaker: "系統", text: "通關：游絲歸位 · 反噬過去。旁白：這是規律——不必給它名字。" },
+      { speaker: "系統", text: "手抖漸漸收斂。側腰石灰傷還在，但指尖仍在顫。" },
+      { speaker: "系統", text: "通關：游絲歸位 · 霧散 · 手仍在抖。" },
     ]);
     pendingDialogueEnd = function () {
       flags.cleared = true;

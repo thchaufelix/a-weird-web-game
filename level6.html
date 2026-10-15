@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-<title>無菌室 · 第6關：常識與壞軌</title>
+<title>無菌室 · 第7關：常識與壞軌</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body {
@@ -236,7 +236,7 @@
 <body>
 <div id="wrap">
   <div id="titlebar">
-    <span><strong>無菌室</strong> · 第6關：常識與壞軌</span>
+    <span><strong>無菌室</strong> · 第7關：常識與壞軌</span>
     <span id="scene-label">—</span>
   </div>
   <div id="stage">
@@ -262,7 +262,7 @@
     </div>
     <div id="title-screen">
       <h1>無菌室</h1>
-      <div class="sub">第6關：常識與壞軌</div>
+      <div class="sub">第7關：常識與壞軌</div>
       <div class="sub" style="margin-top:8px;letter-spacing:0.08em;font-size:12px;color:#5a564e">靠岸客艙門口 · 舷梯 · 拍立得</div>
       <button id="start-btn">開始</button>
     </div>
@@ -573,6 +573,7 @@
       showDialogue([
         { speaker: "梁子安", text: "許曼。相紙上的墨斑——周朗。阿傑不記得了。" },
         { speaker: "許曼", text: "我記得。周朗確實引開了那些東西。鐵門那邊……是他。" },
+        { speaker: "系統", text: "許曼垂著的左手微微發抖。額前一層冷汗。她把右手又在左前臂上按緊了一些。" },
         { speaker: "許曼", text: "常識會改口。我們不要跟着改。" },
         { speaker: "梁子安", text: "我收下相紙。" },
       ]);
@@ -624,8 +625,12 @@
     showDialogue([
       { speaker: "系統", text: "你踏上舷梯。岸上廣播餘音還在說中暑與疏散——像一條壞掉的軌道，反覆播正確的謊。" },
       { speaker: "梁子安", text: "相紙在。名字在。明天，白石中學後巷。" },
-      { speaker: "許曼", text: "走吧。" },
-      { speaker: "系統", text: "通關：拍立得墨斑 · 遺忘與中暑說法 · 許曼確認 · 相紙收妥 · 卷二入口提示。" },
+      { speaker: "系統", text: "海風帶著柴油與鹽。陽光依然刺眼。" },
+      { speaker: "系統", text: "單據上的壞斑依然在滲透。靠窗的位置依然空著。" },
+      { speaker: "梁子安", text: "明天去看看那片……「廢棄了十幾年」的空地。" },
+      { speaker: "許曼", text: "（沒說話。視線停在你收進錢包的相紙上。）" },
+      { speaker: "系統", text: "那片空地，明天就會有人去確認——它到底是不是真的空著。" },
+      { speaker: "系統", text: "通關：第一卷 · 客船完 · 預告卷二 · 白石中學後巷。" },
     ]);
     pendingDialogueEnd = function () {
       flags.cleared = true;
