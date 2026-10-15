@@ -282,6 +282,7 @@
 </div>
 
 <script src="touch-controls.js"></script>
+<script src="sprites.js"></script>
 <script>
 (function () {
   "use strict";
@@ -1415,15 +1416,26 @@
     }
   }
 
-  function drawPerson(x, y, name, color, isPlayer) {
+  function drawPerson(x, y, name, color, isPlayer, wounded, key) {
+    if (window.SterileSprites) {
+      SterileSprites.drawPerson(ctx, x, y, name, color, isPlayer, wounded, key);
+      return;
+    }
+    // fallback placeholder
     ctx.fillStyle = "rgba(0,0,0,0.35)";
     ctx.beginPath();
     ctx.ellipse(x, y + 14, 14, 6, 0, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = color;
+    ctx.fillStyle = color || "#8a7a60";
     ctx.beginPath();
     ctx.arc(x, y, isPlayer ? 14 : 13, 0, Math.PI * 2);
     ctx.fill();
+    if (wounded) {
+      ctx.fillStyle = "rgba(200,210,180,0.65)";
+      ctx.beginPath();
+      ctx.ellipse(x + 10, y + 2, 4, 6, 0.3, 0, Math.PI * 2);
+      ctx.fill();
+    }
     ctx.fillStyle = isPlayer ? "#1a1814" : "#1a1a1a";
     ctx.beginPath();
     ctx.arc(x, y, 6, 0, Math.PI * 2);
@@ -1530,27 +1542,25 @@
       ctx.fillText("鐵門", 874, 300);
     }
 
-    // Aliens
-    for (const a of aliens) {
-      ctx.fillStyle = "rgba(0,0,0,0.4)";
-      ctx.beginPath();
-      ctx.ellipse(a.x, a.y + 12, 16, 7, 0, 0, Math.PI * 2);
-      ctx.fill();
-      // distorted body
-      ctx.fillStyle = a.color;
-      ctx.beginPath();
-      ctx.ellipse(a.x, a.y, 14 + Math.sin(animT * 6) * 2, 16, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = "rgba(180,40,30,0.7)";
-      ctx.beginPath();
-      ctx.arc(a.x - 4, a.y - 2, 3, 0, Math.PI * 2);
-      ctx.arc(a.x + 5, a.y - 1, 2.5, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = "rgba(200,120,100,0.75)";
-      ctx.font = "11px sans-serif";
-      ctx.textAlign = "center";
-      ctx.fillText(a.label, a.x, a.y - 22);
-    }
+    // Aliens (sprite)
+    aliens.forEach(function (a, i) {
+      if (window.SterileSprites) {
+        SterileSprites.drawPerson(ctx, a.x, a.y, a.label || "異化者", a.color || "#5a4038", false, false, "alien-" + i);
+      } else {
+        ctx.fillStyle = "rgba(0,0,0,0.4)";
+        ctx.beginPath();
+        ctx.ellipse(a.x, a.y + 12, 16, 7, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = a.color;
+        ctx.beginPath();
+        ctx.ellipse(a.x, a.y, 14, 16, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "rgba(200,120,100,0.75)";
+        ctx.font = "11px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText(a.label, a.x, a.y - 22);
+      }
+    });
 
     // Companions
     drawPerson(zhou.x, zhou.y, "周朗", "#6a7a90");
