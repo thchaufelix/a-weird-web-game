@@ -6,9 +6,10 @@
   "use strict";
 
   /**
-   * Single map-art constant — swap this value to change the artwork.
-   * Prefer a relative filename (e.g. "old-district-map.jpg") when the binary
-   * is in the repo; data-URL form works without a separate asset file.
+   * Single map-art constant — change this path/URL to swap artwork.
+   * Default: old-district-map.svg (text-safe wrapper of the map painting).
+   * Original JPEG lives at old-district-map.jpg locally, and as
+   * old-district-map.jpg.b64 in the repo (base64 sidecar).
    */
   var MAP_IMAGE = "old-district-map.svg";
 
