@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
 <title>無菌室 · 第5關：游絲與歸位</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -12,6 +12,8 @@
     color: #e8e4dc;
     font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", "Heiti TC", sans-serif;
     overflow: hidden;
+    overflow-x: hidden;
+    touch-action: none;
     user-select: none;
   }
   #wrap {
@@ -296,9 +298,10 @@
       <button id="start-btn">開始</button>
     </div>
   </div>
-  <div id="controls-hint">移動 WASD / 方向鍵　互動／按住 E / Space　對話繼續 E / Space / Enter　（無戰鬥）</div>
+  <div id="controls-hint">移動 WASD / 方向鍵　互動／按住 E / Space　對話繼續 E / Space / Enter　（無戰鬥）　｜　手機：左搖桿移動、右鈕按住</div>
 </div>
 
+<script src="touch-controls.js"></script>
 <script>
 (function () {
   "use strict";
@@ -626,6 +629,24 @@
       holding = false;
     }
   });
+
+  if (window.SterileTouch) {
+    SterileTouch.init({
+      keys: keys,
+      onInteractDown: function () {
+        if (!gameStarted) return;
+        if (inDialogue) advanceDialogue();
+        else if (!flags.cleared && endcard.style.display !== "flex") {
+          if (nearby && nearby.isLink && !flags.anchored) holding = true;
+          else tryInteract();
+        }
+      },
+      onInteractUp: function () {
+        holding = false;
+      }
+    });
+  }
+
 
   startBtn.addEventListener("click", function () {
     titleScreen.style.display = "none";

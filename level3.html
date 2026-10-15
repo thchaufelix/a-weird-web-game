@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
 <title>無菌室 · 第3關：濃霧與低語</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -12,6 +12,8 @@
     color: #e8e4dc;
     font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", "Heiti TC", sans-serif;
     overflow: hidden;
+    overflow-x: hidden;
+    touch-action: none;
     user-select: none;
   }
   #wrap {
@@ -276,9 +278,10 @@
       <button id="start-btn">開始</button>
     </div>
   </div>
-  <div id="controls-hint">移動 WASD / 方向鍵　互動 E / Space　對話繼續 E / Space / Enter　（無戰鬥／無血量）</div>
+  <div id="controls-hint">移動 WASD / 方向鍵　互動 E / Space　對話繼續 E / Space / Enter　（無戰鬥／無血量）　｜　手機：左搖桿移動、右鈕互動</div>
 </div>
 
+<script src="touch-controls.js"></script>
 <script>
 (function () {
   "use strict";
@@ -1123,6 +1126,19 @@
   window.addEventListener("keyup", function (e) {
     keys[e.key.toLowerCase()] = false;
   });
+
+  if (window.SterileTouch) {
+    SterileTouch.init({
+      keys: keys,
+      onInteractDown: function () {
+        if (!gameStarted) return;
+        if (failcard.style.display === "flex") return;
+        if (inDialogue) advanceDialogue();
+        else if (!fading && endcard.style.display !== "flex") tryInteract();
+      }
+    });
+  }
+
 
   startBtn.addEventListener("click", function () {
     titleScreen.style.display = "none";
