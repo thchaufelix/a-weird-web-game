@@ -1,6 +1,9 @@
 /**
  * Sterile Room — shared mobile touch controls
  * Virtual joystick (WASD/arrows) + interact button (E/Space, hold-capable).
+ *
+ * Keyboard and touch share the game `keys` object via OR-merge:
+ * touch never clears a key the keyboard is still holding.
  */
 (function (global) {
   "use strict";
@@ -10,24 +13,26 @@
 
   function wantsTouchUI() {
     try {
+      // Real touch / coarse pointer first
       if (window.matchMedia && window.matchMedia("(pointer: coarse)").matches) return true;
-      if (navigator.maxTouchPoints > 0 || "ontouchstart" in window) return true;
+      if (navigator.maxTouchPoints > 0) return true;
+      // Narrow layout (phone / small window) — show on-screen controls
       if (window.matchMedia && window.matchMedia("(max-width: 900px)").matches) return true;
     } catch (e) {}
     return false;
   }
 
-  function clearMove(keys) {
-    for (var i = 0; i < MOVE_KEYS.length; i++) keys[MOVE_KEYS[i]] = false;
-  }
-
-  function applyStick(keys, nx, ny) {
-    clearMove(keys);
-    if (nx * nx + ny * ny < DEAD * DEAD) return;
-    if (ny < -DEAD) { keys["w"] = true; keys["arrowup"] = true; }
-    if (ny > DEAD) { keys["s"] = true; keys["arrowdown"] = true; }
-    if (nx < -DEAD) { keys["a"] = true; keys["arrowleft"] = true; }
-    if (nx > DEAD) { keys["d"] = true; keys["arrowright"] = true; }
+  function isFineDesktop() {
+    try {
+      return !!(
+        window.matchMedia &&
+        window.matchMedia("(pointer: fine)").matches &&
+        window.matchMedia("(min-width: 901px)").matches &&
+        !(navigator.maxTouchPoints > 0)
+      );
+    } catch (e) {
+      return false;
+    }
   }
 
   function injectStyles() {
@@ -41,6 +46,8 @@
       "  display: none;",
       "}",
       "#sterile-touch-root.sterile-touch-on { display: block; }",
+      /* Fine-pointer wide desktop: keep layout hidden — keyboard only */
+      "#sterile-touch-root.sterile-touch-on.sterile-touch-desktop-hidden { display: none !important; }",
       "#sterile-joy-zone {",
       "  position: absolute; left: 0; bottom: 0;",
       "  width: min(46vw, 220px); height: min(38vh, 200px);",
@@ -72,18 +79,10 @@
       "  display: flex; align-items: center; justify-content: center;",
       "  user-select: none; -webkit-user-select: none;",
       "  box-shadow: 0 4px 18px rgba(0,0,0,0.35);",
+      "  -webkit-tap-highlight-color: transparent;",
       "}",
       "#sterile-interact-btn.pressed {",
       "  background: rgba(196,165,116,0.55); transform: scale(0.96);",
-      "}",
-      "@media (min-width: 901px) and (pointer: fine) {",
-      "  #sterile-touch-root.sterile-touch-on.sterile-touch-desktop {",
-      "    opacity: 0.22;",
-      "  }",
-      "  #sterile-touch-root.sterile-touch-on.sterile-touch-desktop:hover,",
-      "  #sterile-touch-root.sterile-touch-on.sterile-touch-desktop:active {",
-      "    opacity: 0.85;",
-      "  }",
       "}",
       "@media (max-width: 900px) {",
       "  #wrap { padding: 6px; gap: 4px; }",
@@ -107,6 +106,75 @@
 
     injectStyles();
 
+    // --- Keyboard / touch OR-merge into shared `keys` ---
+    var kbMove = Object.create(null);
+    var touchMove = Object.create(null);
+    var kbE = false;
+    var kbSpace = false;
+    var touchInteract = false;
+
+    function syncMove() {
+      for (var i = 0; i < MOVE_KEYS.length; i++) {
+        var k = MOVE_KEYS[i];
+        keys[k] = !!(kbMove[k] || touchMove[k]);
+      }
+    }
+
+    function syncInteract() {
+      keys["e"] = !!(kbE || touchInteract);
+      keys[" "] = !!(kbSpace || touchInteract);
+    }
+
+    function clearTouchMove() {
+      for (var i = 0; i < MOVE_KEYS.length; i++) touchMove[MOVE_KEYS[i]] = false;
+      syncMove();
+    }
+
+    function applyStick(nx, ny) {
+      for (var i = 0; i < MOVE_KEYS.length; i++) touchMove[MOVE_KEYS[i]] = false;
+      if (nx * nx + ny * ny >= DEAD * DEAD) {
+        if (ny < -DEAD) { touchMove["w"] = true; touchMove["arrowup"] = true; }
+        if (ny > DEAD) { touchMove["s"] = true; touchMove["arrowdown"] = true; }
+        if (nx < -DEAD) { touchMove["a"] = true; touchMove["arrowleft"] = true; }
+        if (nx > DEAD) { touchMove["d"] = true; touchMove["arrowright"] = true; }
+      }
+      syncMove();
+    }
+
+    // Track keyboard independently (bubble, after page handlers register).
+    // On keyup the page may set keys[k]=false; we re-OR so held touch still wins,
+    // and held keyboard is restored after touch clearMove.
+    window.addEventListener("keydown", function (e) {
+      var k = e.key.toLowerCase();
+      if (MOVE_KEYS.indexOf(k) >= 0) {
+        kbMove[k] = true;
+        syncMove();
+      }
+      if (k === "e") {
+        kbE = true;
+        syncInteract();
+      }
+      if (k === " " || e.key === " ") {
+        kbSpace = true;
+        syncInteract();
+      }
+    });
+    window.addEventListener("keyup", function (e) {
+      var k = e.key.toLowerCase();
+      if (MOVE_KEYS.indexOf(k) >= 0) {
+        kbMove[k] = false;
+        syncMove();
+      }
+      if (k === "e") {
+        kbE = false;
+        syncInteract();
+      }
+      if (k === " " || e.key === " ") {
+        kbSpace = false;
+        syncInteract();
+      }
+    });
+
     var root = document.createElement("div");
     root.id = "sterile-touch-root";
     root.innerHTML =
@@ -114,20 +182,18 @@
         '<div id="sterile-joy-base"><div id="sterile-joy-knob"></div></div>' +
       "</div>" +
       '<div id="sterile-btn-zone">' +
-        '<button type="button" id="sterile-interact-btn" aria-label="互動">互動</button>' +
+        '<button type="button" id="sterile-interact-btn" tabindex="-1" aria-label="互動">互動</button>' +
       "</div>";
     document.body.appendChild(root);
 
     var show = wantsTouchUI();
-    if (show) {
+    // Pure fine-pointer desktop: do not show (avoids semi-transparent zones eating clicks / clearMove)
+    var hideDesktop = isFineDesktop();
+    if (show && !hideDesktop) {
       root.classList.add("sterile-touch-on");
-      var coarse = false;
-      try {
-        coarse = window.matchMedia && window.matchMedia("(pointer: coarse)").matches;
-      } catch (e) {}
-      if (!coarse && window.innerWidth > 900) {
-        root.classList.add("sterile-touch-desktop");
-      }
+    } else if (show && hideDesktop) {
+      root.classList.add("sterile-touch-on");
+      root.classList.add("sterile-touch-desktop-hidden");
     }
 
     var joyZone = root.querySelector("#sterile-joy-zone");
@@ -175,7 +241,7 @@
       var cx = (dx / len) * clamped;
       var cy = (dy / len) * clamped;
       setKnob(cx, cy);
-      applyStick(keys, cx / maxR, cy / maxR);
+      applyStick(cx / maxR, cy / maxR);
     }
 
     function onJoyEnd(e) {
@@ -189,7 +255,7 @@
       }
       stickId = null;
       setKnob(0, 0);
-      clearMove(keys);
+      clearTouchMove();
     }
 
     joyZone.addEventListener("touchstart", onJoyStart, { passive: false });
@@ -197,21 +263,25 @@
     joyZone.addEventListener("touchend", onJoyEnd, { passive: false });
     joyZone.addEventListener("touchcancel", onJoyEnd, { passive: false });
 
-    // Mouse fallback for small desktop / testing
+    // Mouse fallback only when on-screen controls are actually visible
+    // (narrow window / coarse pointer) — not on hidden fine desktop.
+    var allowMouseJoy = show && !hideDesktop;
     var mouseDown = false;
-    joyZone.addEventListener("mousedown", function (e) {
-      mouseDown = true;
-      onJoyStart(e);
-    });
-    window.addEventListener("mousemove", function (e) {
-      if (!mouseDown) return;
-      onJoyMove(e);
-    });
-    window.addEventListener("mouseup", function (e) {
-      if (!mouseDown) return;
-      mouseDown = false;
-      onJoyEnd(e);
-    });
+    if (allowMouseJoy) {
+      joyZone.addEventListener("mousedown", function (e) {
+        mouseDown = true;
+        onJoyStart(e);
+      });
+      window.addEventListener("mousemove", function (e) {
+        if (!mouseDown) return;
+        onJoyMove(e);
+      });
+      window.addEventListener("mouseup", function (e) {
+        if (!mouseDown) return;
+        mouseDown = false;
+        onJoyEnd(e);
+      });
+    }
 
     var pressing = false;
 
@@ -220,8 +290,9 @@
       if (pressing) return;
       pressing = true;
       btn.classList.add("pressed");
-      keys["e"] = true;
-      keys[" "] = true;
+      try { btn.blur(); } catch (err) {}
+      touchInteract = true;
+      syncInteract();
       if (typeof opts.onInteractDown === "function") opts.onInteractDown();
     }
 
@@ -230,29 +301,33 @@
       if (!pressing) return;
       pressing = false;
       btn.classList.remove("pressed");
-      keys["e"] = false;
-      keys[" "] = false;
+      touchInteract = false;
+      syncInteract();
       if (typeof opts.onInteractUp === "function") opts.onInteractUp();
     }
 
     btn.addEventListener("touchstart", pressDown, { passive: false });
     btn.addEventListener("touchend", pressUp, { passive: false });
     btn.addEventListener("touchcancel", pressUp, { passive: false });
-    btn.addEventListener("mousedown", pressDown);
-    window.addEventListener("mouseup", function () {
-      if (pressing) pressUp();
+    if (allowMouseJoy) {
+      btn.addEventListener("mousedown", pressDown);
+      window.addEventListener("mouseup", function () {
+        if (pressing) pressUp();
+      });
+    }
+    // Avoid click synthesizing a second tap after touch; also keep focus off button
+    btn.addEventListener("click", function (e) {
+      e.preventDefault();
+      try { btn.blur(); } catch (err) {}
     });
-    // Avoid click synthesizing a second tap after touch
-    btn.addEventListener("click", function (e) { e.preventDefault(); });
 
-    // Block pinch-zoom / page scroll while touching game chrome
     document.addEventListener("gesturestart", function (e) {
       if (e.cancelable) e.preventDefault();
     }, { passive: false });
 
     return {
       root: root,
-      show: show,
+      show: show && !hideDesktop,
       setLabel: function (text) {
         btn.textContent = text || "互動";
       }
