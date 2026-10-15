@@ -28,12 +28,14 @@
     home:      { x: 0.50, y: 0.86, label: "梁子安／阿傑／許曼家" }
   };
 
-  var DEFAULT_MS = 1200;
+  var DEFAULT_MS = 3000;
   var root = null;
   var active = false;
   var doneFn = null;
   var timer = null;
   var keyHandler = null;
+  var animFrame = null;
+  var animState = null;
 
   function ensureDom() {
     if (root) return root;
@@ -84,8 +86,19 @@
         "}",
         ".sterile-map-dot { fill: #c4a574; stroke: #e8e0d4; stroke-width: 2; }",
         ".sterile-map-dot-from { fill: #8a857a; stroke: #c4c0b4; stroke-width: 2; }",
-        ".sterile-map-arrow { stroke: #c4a574; stroke-width: 3; fill: none;",
+        ".sterile-map-dot-to { fill: rgba(196,165,116,0.35); stroke: #c4a574; stroke-width: 2;",
+        "  stroke-dasharray: 3 2; }",
+        ".sterile-map-trail { stroke: rgba(196,165,116,0.35); stroke-width: 2.5; fill: none;",
+        "  stroke-linecap: round; stroke-dasharray: 4 3; }",
+        ".sterile-map-path { stroke: #c4a574; stroke-width: 3; fill: none;",
         "  stroke-linecap: round; stroke-linejoin: round; }",
+        ".sterile-map-traveler { fill: #efe9df; stroke: #c4a574; stroke-width: 2.5; }",
+        ".sterile-map-traveler-ring {",
+        "  fill: rgba(196,165,116,0.18); stroke: #c4a574; stroke-width: 2;",
+        "  transform-box: fill-box; transform-origin: center;",
+        "  animation: sterile-map-pulse 0.9s ease-in-out infinite;",
+        "}",
+        ".sterile-map-arrow-head { fill: #c4a574; stroke: none; }",
         ".sterile-map-label {",
         "  fill: #efe9df; font-size: 11px; font-family: inherit;",
         "  paint-order: stroke; stroke: rgba(0,0,0,0.75); stroke-width: 3px;",
@@ -128,10 +141,30 @@
     return MARKERS[id] || null;
   }
 
-  function drawOverlay(fromId, toId) {
+  function easeInOut(t) {
+    return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+  }
+
+  function stopAnim() {
+    if (animFrame != null) {
+      cancelAnimationFrame(animFrame);
+      animFrame = null;
+    }
+    animState = null;
+  }
+
+  function labelPos(m) {
+    var lx = m.x * 100;
+    var ly = m.y * 100 - 6;
+    if (ly < 4) ly = m.y * 100 + 8;
+    return { x: lx, y: ly };
+  }
+
+  function drawOverlay(fromId, toId, durationMs) {
     var svg = document.getElementById("sterile-map-overlay");
     var a = marker(fromId);
     var b = marker(toId);
+    stopAnim();
     if (!svg || !a || !b) {
       if (svg) svg.innerHTML = "";
       return;
@@ -141,41 +174,100 @@
     var dx = bx - ax, dy = by - ay;
     var len = Math.sqrt(dx * dx + dy * dy) || 1;
     var ux = dx / len, uy = dy / len;
-    // Arrow head near destination
-    var hx = bx - ux * 3.2, hy = by - uy * 3.2;
     var px = -uy, py = ux;
-    var head =
-      "M " + bx + " " + by +
-      " L " + (hx + px * 2.2) + " " + (hy + py * 2.2) +
-      " L " + (hx - px * 2.2) + " " + (hy - py * 2.2) + " Z";
 
-    function labelPos(m, side) {
-      var lx = m.x * 100;
-      var ly = m.y * 100 - 6;
-      if (ly < 4) ly = m.y * 100 + 8;
-      return { x: lx, y: ly, anchor: side || "middle" };
-    }
     var la = labelPos(a);
     var lb = labelPos(b);
 
     svg.innerHTML = [
-      '<line class="sterile-map-arrow" x1="' + ax + '" y1="' + ay +
-        '" x2="' + (bx - ux * 2) + '" y2="' + (by - uy * 2) + '" />',
-      '<path class="sterile-map-arrow" fill="#c4a574" stroke="none" d="' + head + '" />',
-      '<circle class="sterile-map-pulse" cx="' + ax + '" cy="' + ay + '" r="12" />',
-      '<circle class="sterile-map-dot-from" cx="' + ax + '" cy="' + ay + '" r="5" />',
-      '<circle class="sterile-map-pulse" cx="' + bx + '" cy="' + by + '" r="12" />',
-      '<circle class="sterile-map-dot" cx="' + bx + '" cy="' + by + '" r="6" />',
+      '<line class="sterile-map-trail" x1="' + ax + '" y1="' + ay +
+        '" x2="' + bx + '" y2="' + by + '" />',
+      '<line id="sterile-map-path" class="sterile-map-path" x1="' + ax + '" y1="' + ay +
+        '" x2="' + ax + '" y2="' + ay + '" />',
+      '<path id="sterile-map-arrow-head" class="sterile-map-arrow-head" d="" />',
+      '<circle class="sterile-map-pulse" cx="' + ax + '" cy="' + ay + '" r="10" />',
+      '<circle class="sterile-map-dot-from" cx="' + ax + '" cy="' + ay + '" r="4.5" />',
+      '<circle class="sterile-map-dot-to" cx="' + bx + '" cy="' + by + '" r="5" />',
+      '<circle id="sterile-map-traveler-ring" class="sterile-map-traveler-ring" cx="' + ax +
+        '" cy="' + ay + '" r="9" />',
+      '<circle id="sterile-map-traveler" class="sterile-map-traveler" cx="' + ax +
+        '" cy="' + ay + '" r="5.5" />',
       '<text class="sterile-map-label" x="' + la.x + '" y="' + la.y +
         '" text-anchor="middle">' + a.label + "</text>",
       '<text class="sterile-map-label" x="' + lb.x + '" y="' + lb.y +
         '" text-anchor="middle">' + b.label + "</text>"
     ].join("");
+
+    var pathEl = document.getElementById("sterile-map-path");
+    var traveler = document.getElementById("sterile-map-traveler");
+    var travelerRing = document.getElementById("sterile-map-traveler-ring");
+    var arrowHead = document.getElementById("sterile-map-arrow-head");
+    var toDot = svg.querySelector(".sterile-map-dot-to");
+
+    function setArrowHead(cx, cy, facing) {
+      if (!arrowHead || !facing) {
+        if (arrowHead) arrowHead.setAttribute("d", "");
+        return;
+      }
+      var hx = cx - facing.ux * 0.2;
+      var hy = cy - facing.uy * 0.2;
+      var head =
+        "M " + cx + " " + cy +
+        " L " + (hx + facing.px * 2.4) + " " + (hy + facing.py * 2.4) +
+        " L " + (hx - facing.px * 2.4) + " " + (hy - facing.py * 2.4) + " Z";
+      arrowHead.setAttribute("d", head);
+    }
+
+    function applyProgress(t) {
+      var e = easeInOut(Math.max(0, Math.min(1, t)));
+      var x = ax + dx * e;
+      var y = ay + dy * e;
+      if (pathEl) {
+        pathEl.setAttribute("x2", x);
+        pathEl.setAttribute("y2", y);
+      }
+      if (traveler) {
+        traveler.setAttribute("cx", x);
+        traveler.setAttribute("cy", y);
+      }
+      if (travelerRing) {
+        travelerRing.setAttribute("cx", x);
+        travelerRing.setAttribute("cy", y);
+      }
+      if (e > 0.04) {
+        setArrowHead(x + ux * 3.6, y + uy * 3.6, { ux: ux, uy: uy, px: px, py: py });
+      } else {
+        setArrowHead(0, 0, null);
+      }
+      if (toDot && e >= 0.98) {
+        toDot.setAttribute("class", "sterile-map-dot");
+        toDot.setAttribute("r", "6");
+      }
+    }
+
+    var ms = durationMs > 0 ? durationMs : DEFAULT_MS;
+    animState = { start: performance.now(), ms: ms };
+    applyProgress(0);
+
+    function tick(now) {
+      if (!animState) return;
+      var t = (now - animState.start) / animState.ms;
+      applyProgress(t);
+      if (t < 1) {
+        animFrame = requestAnimationFrame(tick);
+      } else {
+        applyProgress(1);
+        animFrame = null;
+        animState = null;
+      }
+    }
+    animFrame = requestAnimationFrame(tick);
   }
 
   function finish() {
     if (!active) return;
     active = false;
+    stopAnim();
     if (timer) {
       clearTimeout(timer);
       timer = null;
@@ -204,6 +296,7 @@
     ensureDom();
     // If already open, finish previous first without double-calling awkwardly
     if (active) {
+      stopAnim();
       if (timer) { clearTimeout(timer); timer = null; }
       if (keyHandler) {
         window.removeEventListener("keydown", keyHandler, true);
@@ -222,7 +315,7 @@
       (a ? a.label : fromId || "?") + "  →  " + (b ? b.label : toId || "?");
 
     function afterLayout() {
-      drawOverlay(fromId, toId);
+      drawOverlay(fromId, toId, ms);
     }
     if (img.complete && img.naturalWidth) afterLayout();
     else img.onload = afterLayout;
@@ -265,6 +358,7 @@
   global.SterileMapTransition = {
     MAP_IMAGE: MAP_IMAGE,
     MARKERS: MARKERS,
+    DEFAULT_MS: DEFAULT_MS,
     show: show,
     isActive: isActive,
     tryDismiss: tryDismiss
